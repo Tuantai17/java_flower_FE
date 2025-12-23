@@ -234,9 +234,10 @@ const CategoryForm = ({
                         <ImageUploader
                             value={formData.imageUrl}
                             onChange={handleImageUpload}
-                            folder="categories"
+                            uploadType="category"
                         />
                     </div>
+
 
                     {/* Status */}
                     <div className="bg-white rounded-xl shadow-soft p-6">

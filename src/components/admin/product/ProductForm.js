@@ -22,20 +22,32 @@ const ProductForm = ({
         thumbnail: '',
         active: true,
         status: 1,
-        ...initialData,
     });
     const [errors, setErrors] = useState({});
+
+    // Initialize form with initialData when it changes
+    useEffect(() => {
+        if (initialData) {
+            setFormData({
+                name: initialData.name || '',
+                slug: initialData.slug || '',
+                description: initialData.description || '',
+                price: initialData.price || '',
+                salePrice: initialData.salePrice || '',
+                stockQuantity: initialData.stockQuantity || 0,
+                categoryId: initialData.categoryId || '',
+                thumbnail: initialData.thumbnail || '',
+                active: initialData.active !== undefined ? initialData.active : true,
+                status: initialData.status || 1,
+            });
+        }
+    }, [initialData]);
+
 
     useEffect(() => {
         fetchCategories();
     }, []);
 
-    useEffect(() => {
-        if (initialData) {
-            setFormData(prev => ({ ...prev, ...initialData }));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialData]);
 
     const fetchCategories = async () => {
         try {
@@ -60,7 +72,7 @@ const ProductForm = ({
     };
 
     const generateSlug = (name) => {
-        return name
+        const baseSlug = name
             .toLowerCase()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
@@ -70,6 +82,13 @@ const ProductForm = ({
             .replace(/\s+/g, '-')
             .replace(/-+/g, '-')
             .trim();
+
+        // Add random suffix if creating new product (no initialData) to ensure uniqueness
+        if (!initialData) {
+            const randomSuffix = Math.random().toString(36).substring(2, 6);
+            return `${baseSlug}-${randomSuffix}`;
+        }
+        return baseSlug;
     };
 
     const handleChange = (e) => {
@@ -262,8 +281,10 @@ const ProductForm = ({
                         <ImageUploader
                             value={formData.thumbnail}
                             onChange={handleImageUpload}
+                            uploadType="product"
                         />
                     </div>
+
 
                     {/* Category */}
                     <div className="bg-white rounded-xl shadow-soft p-6">

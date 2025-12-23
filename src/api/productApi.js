@@ -1,10 +1,24 @@
 import axiosInstance from './axiosConfig';
 
+/**
+ * Helper function để unwrap response từ backend
+ * Backend trả về: { success, data, message, timestamp }
+ * Cần lấy data từ wrapper
+ */
+const unwrapResponse = (response) => {
+    // Nếu response.data có property 'data' và 'success', đó là wrapper
+    if (response.data && typeof response.data === 'object' && 'data' in response.data && 'success' in response.data) {
+        return response.data.data;
+    }
+    // Fallback: trả về response.data nếu không phải wrapper
+    return response.data;
+};
+
 const productApi = {
     // Get all products with optional filters (for public use)
     getAll: async (params = {}) => {
         const response = await axiosInstance.get('/products', { params });
-        return response.data;
+        return unwrapResponse(response);
     },
 
     // Get paginated products - simulates pagination from full list since backend doesn't have /page endpoint
@@ -12,41 +26,47 @@ const productApi = {
         try {
             // Try admin endpoint first for complete list
             const response = await axiosInstance.get('/admin/products');
-            const allProducts = response.data;
+            const allProducts = unwrapResponse(response);
+
+            // Ensure allProducts is an array
+            const productsArray = Array.isArray(allProducts) ? allProducts : [];
 
             // Simulate pagination on frontend
             const startIndex = page * size;
             const endIndex = startIndex + size;
-            const paginatedProducts = allProducts.slice(startIndex, endIndex);
+            const paginatedProducts = productsArray.slice(startIndex, endIndex);
 
             // Return Spring Boot Page format
             return {
                 content: paginatedProducts,
-                totalElements: allProducts.length,
-                totalPages: Math.ceil(allProducts.length / size),
+                totalElements: productsArray.length,
+                totalPages: Math.ceil(productsArray.length / size),
                 number: page,
                 size: size,
                 first: page === 0,
-                last: endIndex >= allProducts.length
+                last: endIndex >= productsArray.length
             };
         } catch (error) {
             console.log('Admin products endpoint failed, trying public endpoint');
             // Fallback to public endpoint
             const response = await axiosInstance.get('/products');
-            const allProducts = response.data;
+            const allProducts = unwrapResponse(response);
+
+            // Ensure allProducts is an array
+            const productsArray = Array.isArray(allProducts) ? allProducts : [];
 
             const startIndex = page * size;
             const endIndex = startIndex + size;
-            const paginatedProducts = allProducts.slice(startIndex, endIndex);
+            const paginatedProducts = productsArray.slice(startIndex, endIndex);
 
             return {
                 content: paginatedProducts,
-                totalElements: allProducts.length,
-                totalPages: Math.ceil(allProducts.length / size),
+                totalElements: productsArray.length,
+                totalPages: Math.ceil(productsArray.length / size),
                 number: page,
                 size: size,
                 first: page === 0,
-                last: endIndex >= allProducts.length
+                last: endIndex >= productsArray.length
             };
         }
     },
@@ -55,18 +75,18 @@ const productApi = {
     getById: async (id) => {
         try {
             const response = await axiosInstance.get(`/admin/products/${id}`);
-            return response.data;
+            return unwrapResponse(response);
         } catch (error) {
             // Fallback to public endpoint
             const response = await axiosInstance.get(`/products/${id}`);
-            return response.data;
+            return unwrapResponse(response);
         }
     },
 
     // Get product by slug
     getBySlug: async (slug) => {
         const response = await axiosInstance.get(`/products/slug/${slug}`);
-        return response.data;
+        return unwrapResponse(response);
     },
 
     // Get products by category
@@ -74,25 +94,25 @@ const productApi = {
         const response = await axiosInstance.get(`/products/category/${categoryId}`, {
             params: { page, size }
         });
-        return response.data;
+        return unwrapResponse(response);
     },
 
     // Get products by category with automatic parent/child detection
     getProductsByCategoryAuto: async (categoryId) => {
         const response = await axiosInstance.get(`/products/category-auto/${categoryId}`);
-        return response.data;
+        return unwrapResponse(response);
     },
 
     // Get products by parent category ID
     getProductsByParentCategory: async (parentCategoryId) => {
         const response = await axiosInstance.get(`/products/parent-category/${parentCategoryId}`);
-        return response.data;
+        return unwrapResponse(response);
     },
 
     // Get products by parent category slug
     getProductsByParentCategorySlug: async (slug) => {
         const response = await axiosInstance.get(`/products/parent-category/slug/${slug}`);
-        return response.data;
+        return unwrapResponse(response);
     },
 
     // Search products
@@ -100,7 +120,7 @@ const productApi = {
         const response = await axiosInstance.get('/products/search', {
             params: { keyword, page, size }
         });
-        return response.data;
+        return unwrapResponse(response);
     },
 
     // Get featured products (using latest as alternative)
@@ -109,13 +129,13 @@ const productApi = {
             const response = await axiosInstance.get('/products/featured', {
                 params: { limit }
             });
-            return response.data;
+            return unwrapResponse(response);
         } catch (error) {
             // Fallback to latest products
             const response = await axiosInstance.get('/products/latest', {
                 params: { limit }
             });
-            return response.data;
+            return unwrapResponse(response);
         }
     },
 
@@ -123,7 +143,10 @@ const productApi = {
     getSale: async (limit = 8) => {
         try {
             const response = await axiosInstance.get('/products/on-sale');
-            return response.data.slice(0, limit);
+            const data = unwrapResponse(response);
+            // Ensure data is an array before slicing
+            const productsArray = Array.isArray(data) ? data : [];
+            return productsArray.slice(0, limit);
         } catch (error) {
             console.error('Sale products endpoint not available:', error);
             return [];
@@ -135,7 +158,7 @@ const productApi = {
         const response = await axiosInstance.get('/products/latest', {
             params: { limit }
         });
-        return response.data;
+        return unwrapResponse(response);
     },
 
     // Get best sellers (fallback to latest)
@@ -144,46 +167,162 @@ const productApi = {
             const response = await axiosInstance.get('/products/best-sellers', {
                 params: { limit }
             });
-            return response.data;
+            return unwrapResponse(response);
         } catch (error) {
             // Fallback to latest products
             const response = await axiosInstance.get('/products/latest', {
                 params: { limit }
             });
-            return response.data;
+            return unwrapResponse(response);
         }
     },
 
     // Admin: Create product
     create: async (productData) => {
-        const response = await axiosInstance.post('/admin/products', productData);
-        return response.data;
+        // Transform data to match backend DTO
+        const transformedData = {
+            name: productData.name,
+            slug: productData.slug || null,
+            description: productData.description || null,
+            price: Number(productData.price) || 0,
+            salePrice: productData.salePrice ? Number(productData.salePrice) : null,
+            stockQuantity: Number(productData.stockQuantity) || 0,
+            categoryId: Number(productData.categoryId),
+            thumbnail: productData.thumbnail || null,
+            active: productData.active !== undefined ? productData.active : true,
+            // Only include status if backend expects it
+            ...(productData.status !== undefined && { status: Number(productData.status) })
+        };
+
+        console.log('📤 Creating product with data:', transformedData);
+
+        try {
+            const response = await axiosInstance.post('/admin/products', transformedData);
+            return unwrapResponse(response);
+        } catch (error) {
+            console.error('❌ Create product error:', error.response?.data);
+            // Re-throw with more detailed message
+            if (error.response?.status === 400) {
+                const responseData = error.response?.data;
+                let errorMessage = 'Dữ liệu không hợp lệ';
+
+                // Try to extract detailed validation errors
+                if (responseData?.data && typeof responseData.data === 'object') {
+                    // Backend returns validation errors in data property
+                    const validationErrors = Object.entries(responseData.data)
+                        .map(([field, msg]) => `${field}: ${msg}`)
+                        .join('; ');
+                    if (validationErrors) {
+                        errorMessage = validationErrors;
+                    }
+                } else if (responseData?.message) {
+                    errorMessage = responseData.message;
+                } else if (responseData?.error) {
+                    errorMessage = responseData.error;
+                }
+
+                throw new Error(errorMessage);
+            }
+            throw error;
+        }
     },
 
     // Admin: Update product
     update: async (id, productData) => {
-        const response = await axiosInstance.put(`/admin/products/${id}`, productData);
-        return response.data;
+        // Transform data to match backend DTO
+        const transformedData = {
+            id: Number(id),
+            name: productData.name,
+            slug: productData.slug || null,
+            description: productData.description || null,
+            price: Number(productData.price) || 0,
+            salePrice: productData.salePrice ? Number(productData.salePrice) : null,
+            stockQuantity: Number(productData.stockQuantity) || 0,
+            categoryId: Number(productData.categoryId),
+            thumbnail: productData.thumbnail || null,
+            active: productData.active !== undefined ? productData.active : true,
+            ...(productData.status !== undefined && { status: Number(productData.status) })
+        };
+
+        console.log('📤 Updating product with data:', transformedData);
+
+        try {
+            const response = await axiosInstance.put(`/admin/products/${id}`, transformedData);
+            return unwrapResponse(response);
+        } catch (error) {
+            console.error('❌ Update product error:', error.response?.data);
+            if (error.response?.status === 400) {
+                const responseData = error.response?.data;
+                let errorMessage = 'Dữ liệu không hợp lệ';
+
+                // Try to extract detailed validation errors
+                if (responseData?.data && typeof responseData.data === 'object') {
+                    const validationErrors = Object.entries(responseData.data)
+                        .map(([field, msg]) => `${field}: ${msg}`)
+                        .join('; ');
+                    if (validationErrors) {
+                        errorMessage = validationErrors;
+                    }
+                } else if (responseData?.message) {
+                    errorMessage = responseData.message;
+                } else if (responseData?.error) {
+                    errorMessage = responseData.error;
+                }
+
+                throw new Error(errorMessage);
+            }
+            throw error;
+        }
     },
 
     // Admin: Delete product
     delete: async (id) => {
-        const response = await axiosInstance.delete(`/admin/products/${id}`);
-        return response.data;
+        try {
+            const response = await axiosInstance.delete(`/admin/products/${id}`);
+            return unwrapResponse(response);
+        } catch (error) {
+            // Handle specific error cases
+            if (error.response?.status === 500) {
+                // Server error - likely FK constraint or database issue
+                const errorMessage = error.response?.data?.message ||
+                    'Không thể xóa sản phẩm. Sản phẩm có thể đang được sử dụng trong đơn hàng hoặc giỏ hàng.';
+
+                // Try soft delete (set active = false) as fallback
+                console.log('Hard delete failed, attempting soft delete...');
+                try {
+                    const product = await productApi.getById(id);
+                    await productApi.update(id, { ...product, active: false });
+                    return {
+                        success: true,
+                        message: 'Sản phẩm đã được ẩn thay vì xóa do đang được sử dụng',
+                        softDeleted: true
+                    };
+                } catch (softDeleteError) {
+                    console.error('Soft delete also failed:', softDeleteError);
+                    throw new Error(errorMessage);
+                }
+            }
+            throw error;
+        }
     },
 
-    // Admin: Toggle product status (needs to be implemented in backend or use update)
+    // Admin: Toggle product status (using update since toggle endpoint may not exist)
     toggleStatus: async (id) => {
         try {
-            // Try the toggle endpoint first
-            const response = await axiosInstance.patch(`/admin/products/${id}/toggle-status`);
-            return response.data;
-        } catch (error) {
-            // If toggle endpoint doesn't exist, get product and update active status
-            console.log('Toggle endpoint not available, using update instead');
+            // Get current product first
             const product = await productApi.getById(id);
-            const updatedProduct = { ...product, active: !product.active };
-            return await productApi.update(id, updatedProduct);
+
+            // Update with toggled active status
+            const updatedProduct = {
+                ...product,
+                active: !product.active
+            };
+
+            const response = await productApi.update(id, updatedProduct);
+            return response;
+        } catch (error) {
+            console.error('Toggle status failed:', error);
+            throw error;
         }
     },
 
@@ -191,17 +330,18 @@ const productApi = {
     getStats: async () => {
         try {
             const response = await axiosInstance.get('/admin/products/stats');
-            return response.data;
+            return unwrapResponse(response);
         } catch (error) {
             // Calculate stats from products list
             console.log('Stats endpoint not available, calculating from list');
-            const products = await axiosInstance.get('/admin/products');
-            const allProducts = products.data;
+            const response = await axiosInstance.get('/admin/products');
+            const allProducts = unwrapResponse(response);
+            const productsArray = Array.isArray(allProducts) ? allProducts : [];
             return {
-                total: allProducts.length,
-                active: allProducts.filter(p => p.active).length,
-                inactive: allProducts.filter(p => !p.active).length,
-                onSale: allProducts.filter(p => p.salePrice && p.salePrice > 0).length
+                total: productsArray.length,
+                active: productsArray.filter(p => p.active).length,
+                inactive: productsArray.filter(p => !p.active).length,
+                onSale: productsArray.filter(p => p.salePrice && p.salePrice > 0).length
             };
         }
     },

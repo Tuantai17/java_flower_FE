@@ -1,16 +1,23 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import './App.css';
 
-// Context
+// GLOBAL CONTEXT
 import { AppProvider } from './context/AppContext';
+import { AuthProvider } from './context/AuthContext';
+import { AdminAuthProvider } from './context/AdminAuthContext';
+
+// Protected Route
+import ProtectedRoute from "./components/common/ProtectedRoute";
+import AdminProtectedRoute from "./components/common/AdminProtectedRoute";
 
 // Layouts
 import UserLayout from './layouts/UserLayout';
 import AdminLayout from './layouts/AdminLayout';
 import BlankLayout from './layouts/BlankLayout';
 
-// User Pages
+// USER Pages
 import HomePage from './pages/user/HomePage';
 import ShopPage from './pages/user/ShopPage';
 import ProductDetailPage from './pages/user/ProductDetailPage';
@@ -18,8 +25,22 @@ import CategoryPage from './pages/user/CategoryPage';
 import SearchResultPage from './pages/user/SearchResultPage';
 import AboutPage from './pages/user/AboutPage';
 import ContactPage from './pages/user/ContactPage';
+import ProfilePage from './pages/user/ProfilePage';
+import CartPage from './pages/user/CartPage';
+import CheckoutPage from './pages/user/CheckoutPage';
+import VoucherPage from './pages/user/VoucherPage';
+import MyOrdersPage from './pages/user/MyOrdersPage';
+import OrderDetailPage from './pages/user/OrderDetailPage';
+import PaymentResultPage from './pages/user/PaymentResultPage';
 
-// Admin Pages
+// AUTH Pages (User)
+import LoginPage from "./pages/user/LoginPage";
+import RegisterPage from "./pages/user/RegisterPage";
+import ForgotPasswordPage from "./pages/user/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/user/ResetPasswordPage";
+
+// ADMIN Pages
+import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import Dashboard from './pages/admin/Dashboard';
 import ProductList from './pages/admin/product/ProductList';
 import ProductCreate from './pages/admin/product/ProductCreate';
@@ -27,41 +48,121 @@ import ProductEdit from './pages/admin/product/ProductEdit';
 import CategoryList from './pages/admin/category/CategoryList';
 import CategoryCreate from './pages/admin/category/CategoryCreate';
 import CategoryEdit from './pages/admin/category/CategoryEdit';
+import VoucherList from './pages/admin/voucher/VoucherList';
+import VoucherCreate from './pages/admin/voucher/VoucherCreate';
+import VoucherEdit from './pages/admin/voucher/VoucherEdit';
+import AdminOrderList from './pages/admin/order/OrderList';
+import AdminOrderDetail from './pages/admin/order/OrderDetail';
+import { StockList } from './pages/admin/stock';
+import { CustomerList } from './pages/admin/customer';
+
+// Global Components
+import GlobalNotification from './components/common/GlobalNotification';
+
+// Google Client ID từ biến môi trường
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 function App() {
   return (
-    <AppProvider>
-      <Router>
-        <Routes>
-          {/* User Routes */}
-          <Route path="/" element={<UserLayout />}>
-            <Route index element={<HomePage />} />
-            <Route path="shop" element={<ShopPage />} />
-            <Route path="product/:id" element={<ProductDetailPage />} />
-            <Route path="category/:id" element={<CategoryPage />} />
-            <Route path="search" element={<SearchResultPage />} />
-            <Route path="about" element={<AboutPage />} />
-            <Route path="contact" element={<ContactPage />} />
-          </Route>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <AppProvider>
+        <AuthProvider>
+          <AdminAuthProvider>
+            <Router>
+              {/* Global Notification */}
+              <GlobalNotification />
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="products" element={<ProductList />} />
-            <Route path="products/create" element={<ProductCreate />} />
-            <Route path="products/edit/:id" element={<ProductEdit />} />
-            <Route path="categories" element={<CategoryList />} />
-            <Route path="categories/create" element={<CategoryCreate />} />
-            <Route path="categories/edit/:id" element={<CategoryEdit />} />
-          </Route>
+              <Routes>
 
-          {/* Blank Layout (for future auth pages) */}
-          <Route path="/auth" element={<BlankLayout />}>
-            {/* Add auth routes here */}
-          </Route>
-        </Routes>
-      </Router>
-    </AppProvider>
+                {/* ================= USER ROUTES ================= */}
+                <Route path="/" element={<UserLayout />}>
+                  <Route index element={<HomePage />} />
+                  <Route path="shop" element={<ShopPage />} />
+                  <Route path="product/:id" element={<ProductDetailPage />} />
+                  <Route path="category/:id" element={<CategoryPage />} />
+                  <Route path="search" element={<SearchResultPage />} />
+                  <Route path="about" element={<AboutPage />} />
+                  <Route path="contact" element={<ContactPage />} />
+                  <Route path="vouchers" element={<VoucherPage />} />
+
+                  {/* USER ACCOUNT */}
+                  <Route path="account" element={<ProfilePage />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                  <Route path="profile/orders" element={<MyOrdersPage />} />
+                  <Route path="profile/orders/:id" element={<OrderDetailPage />} />
+
+                  {/* CART & CHECKOUT */}
+                  <Route path="cart" element={<CartPage />} />
+                  <Route path="checkout" element={<CheckoutPage />} />
+
+                  {/* PAYMENT CALLBACK (MoMo, VNPay) */}
+                  <Route path="payment/result" element={<PaymentResultPage />} />
+
+                  {/* AUTH USER */}
+                  <Route path="login" element={<LoginPage />} />
+                  <Route path="register" element={<RegisterPage />} />
+                  <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="reset-password" element={<ResetPasswordPage />} />
+                </Route>
+
+
+
+
+                {/* ================= ADMIN LOGIN (NO LAYOUT) ================= */}
+                <Route path="/admin/login" element={<AdminLoginPage />} />
+
+
+                {/* ================= ADMIN ROUTES ================= */}
+                <Route
+                  path="/admin"
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminLayout />
+                    </AdminProtectedRoute>
+                  }
+                >
+                  <Route index element={<Dashboard />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+
+
+                  {/* PRODUCT */}
+                  <Route path="products" element={<ProductList />} />
+                  <Route path="products/create" element={<ProductCreate />} />
+                  <Route path="products/edit/:id" element={<ProductEdit />} />
+
+                  {/* CATEGORY */}
+                  <Route path="categories" element={<CategoryList />} />
+                  <Route path="categories/create" element={<CategoryCreate />} />
+                  <Route path="categories/edit/:id" element={<CategoryEdit />} />
+
+                  {/* VOUCHER */}
+                  <Route path="vouchers" element={<VoucherList />} />
+                  <Route path="vouchers/create" element={<VoucherCreate />} />
+                  <Route path="vouchers/edit/:id" element={<VoucherEdit />} />
+
+                  {/* ORDERS */}
+                  <Route path="orders" element={<AdminOrderList />} />
+                  <Route path="orders/:id" element={<AdminOrderDetail />} />
+
+                  {/* STOCK MANAGEMENT */}
+                  <Route path="stock" element={<StockList />} />
+
+                  {/* CUSTOMERS */}
+                  <Route path="customers" element={<CustomerList />} />
+                </Route>
+
+
+                {/* ================= OPTIONAL AUTH BLANK LAYOUT ================= */}
+                <Route path="/auth" element={<BlankLayout />}>
+                  {/* Future auth pages */}
+                </Route>
+
+              </Routes>
+            </Router>
+          </AdminAuthProvider>
+        </AuthProvider>
+      </AppProvider>
+    </GoogleOAuthProvider>
   );
 }
 

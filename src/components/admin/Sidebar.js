@@ -9,6 +9,8 @@ import {
     ChartBarIcon,
     Cog6ToothIcon,
     ArrowLeftOnRectangleIcon,
+    TicketIcon,
+    ArchiveBoxIcon,
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
@@ -31,9 +33,19 @@ const Sidebar = () => {
             icon: FolderIcon,
         },
         {
+            title: 'Voucher',
+            path: '/admin/vouchers',
+            icon: TicketIcon,
+        },
+        {
             title: 'Đơn hàng',
             path: '/admin/orders',
             icon: ShoppingCartIcon,
+        },
+        {
+            title: 'Tồn kho',
+            path: '/admin/stock',
+            icon: ArchiveBoxIcon,
         },
         {
             title: 'Khách hàng',
@@ -121,6 +133,15 @@ const Sidebar = () => {
                             >
                                 <span>➕</span>
                                 <span>Thêm sản phẩm</span>
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                to="/admin/stock"
+                                className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
+                            >
+                                <span>📦</span>
+                                <span>Cập nhật kho</span>
                             </Link>
                         </li>
                     </ul>

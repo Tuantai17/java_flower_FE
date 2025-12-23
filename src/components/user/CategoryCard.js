@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { getImageUrl } from '../../utils/imageUrl';
 
 const CategoryCard = ({ category }) => {
     const { id, name, imageUrl, description, productCount } = category;
@@ -12,7 +13,7 @@ const CategoryCard = ({ category }) => {
             {/* Background Image */}
             <div className="absolute inset-0">
                 <img
-                    src={imageUrl || '/assets/images/placeholder.jpg'}
+                    src={getImageUrl(imageUrl)}
                     alt={name}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />

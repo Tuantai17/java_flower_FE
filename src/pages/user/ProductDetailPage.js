@@ -16,6 +16,7 @@ import {
     ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
+import { getImageUrl } from '../../utils/imageUrl';
 
 const ProductDetailPage = () => {
     const { id } = useParams();
@@ -24,7 +25,7 @@ const ProductDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
     const [selectedImage, setSelectedImage] = useState(0);
-    const { addToCart, toggleFavorite, isFavorite } = useApp();
+    const { addToCart, toggleFavorite, isFavorite, showNotification } = useApp();
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -63,8 +64,26 @@ const ProductDetailPage = () => {
     const handleAddToCart = () => {
         if (product) {
             addToCart(product, quantity);
+            showNotification({
+                type: 'success',
+                message: `Đã thêm ${quantity} "${product.name}" vào giỏ hàng!`,
+            });
         }
     };
+
+    const handleToggleFavorite = () => {
+        if (product) {
+            const wasFavorite = isFavorite(product.id);
+            toggleFavorite(product);
+            showNotification({
+                type: wasFavorite ? 'info' : 'success',
+                message: wasFavorite
+                    ? `Đã xóa "${product.name}" khỏi yêu thích`
+                    : `Đã thêm "${product.name}" vào yêu thích!`,
+            });
+        }
+    };
+
 
     if (loading) {
         return <Loading fullScreen text="Đang tải sản phẩm..." />;
@@ -83,7 +102,13 @@ const ProductDetailPage = () => {
         );
     }
 
-    const images = product.images || [product.thumbnail];
+    const imageSources = product.images && product.images.length > 0
+        ? product.images
+        : [product.thumbnail];
+
+    // Tiền xử lý tất cả URL ảnh
+    const images = imageSources.map(img => getImageUrl(img));
+
     const discount = product.salePrice && product.price > product.salePrice
         ? Math.round(((product.price - product.salePrice) / product.price) * 100)
         : 0;
@@ -213,7 +238,7 @@ const ProductDetailPage = () => {
 
                                 {/* Favorite */}
                                 <button
-                                    onClick={() => toggleFavorite(product)}
+                                    onClick={handleToggleFavorite}
                                     className={`p-3 rounded-full border-2 transition-all ${isFavorite(product.id)
                                         ? 'bg-pink-500 border-pink-500 text-white'
                                         : 'border-gray-300 text-gray-600 hover:border-pink-500 hover:text-pink-500'

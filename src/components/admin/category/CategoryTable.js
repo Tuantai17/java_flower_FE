@@ -7,6 +7,7 @@ import {
     XCircleIcon,
     FolderIcon
 } from '@heroicons/react/24/outline';
+import { getImageUrl } from '../../../utils/imageUrl';
 
 const CategoryTable = ({
     categories,
@@ -59,95 +60,100 @@ const CategoryTable = ({
                     </tr>
                 </thead>
                 <tbody>
-                    {categories.map((category) => (
-                        <tr key={category.id} className="hover:bg-gray-50 transition-colors">
-                            {/* Image */}
-                            <td>
-                                {category.imageUrl ? (
-                                    <img
-                                        src={category.imageUrl}
-                                        alt={category.name}
-                                        className="w-12 h-12 object-cover rounded-lg"
-                                    />
-                                ) : (
-                                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                                        <FolderIcon className="h-6 w-6 text-gray-400" />
-                                    </div>
-                                )}
-                            </td>
+                    {categories.map((category) => {
+                        const hasImage = category.imageUrl && !category.imageUrl.startsWith('blob:');
+                        const validImageUrl = hasImage ? getImageUrl(category.imageUrl) : null;
 
-                            {/* Name */}
-                            <td>
-                                <span className="font-medium text-gray-800">{category.name}</span>
-                            </td>
+                        return (
+                            <tr key={category.id} className="hover:bg-gray-50 transition-colors">
+                                {/* Image */}
+                                <td>
+                                    {validImageUrl ? (
+                                        <img
+                                            src={validImageUrl}
+                                            alt={category.name}
+                                            className="w-12 h-12 object-cover rounded-lg"
+                                        />
+                                    ) : (
+                                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                                            <FolderIcon className="h-6 w-6 text-gray-400" />
+                                        </div>
+                                    )}
+                                </td>
 
-                            {/* Slug */}
-                            <td>
-                                <span className="text-gray-500 text-sm">/{category.slug}</span>
-                            </td>
+                                {/* Name */}
+                                <td>
+                                    <span className="font-medium text-gray-800">{category.name}</span>
+                                </td>
 
-                            {/* Parent */}
-                            <td>
-                                {category.parentName ? (
-                                    <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                                        {category.parentName}
+                                {/* Slug */}
+                                <td>
+                                    <span className="text-gray-500 text-sm">/{category.slug}</span>
+                                </td>
+
+                                {/* Parent */}
+                                <td>
+                                    {category.parentName ? (
+                                        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                                            {category.parentName}
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-400 text-sm">-</span>
+                                    )}
+                                </td>
+
+                                {/* Sort Order */}
+                                <td className="text-center">
+                                    <span className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full text-sm font-medium text-gray-600">
+                                        {category.sortOrder || 0}
                                     </span>
-                                ) : (
-                                    <span className="text-gray-400 text-sm">-</span>
-                                )}
-                            </td>
+                                </td>
 
-                            {/* Sort Order */}
-                            <td className="text-center">
-                                <span className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full text-sm font-medium text-gray-600">
-                                    {category.sortOrder || 0}
-                                </span>
-                            </td>
-
-                            {/* Status */}
-                            <td className="text-center">
-                                <button
-                                    onClick={() => onToggleStatus?.(category.id)}
-                                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${category.active
+                                {/* Status */}
+                                <td className="text-center">
+                                    <button
+                                        onClick={() => onToggleStatus?.(category.id)}
+                                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${category.active
                                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                        }`}
-                                >
-                                    {category.active ? (
-                                        <>
-                                            <CheckCircleIcon className="h-4 w-4" />
-                                            Hoạt động
-                                        </>
-                                    ) : (
-                                        <>
-                                            <XCircleIcon className="h-4 w-4" />
-                                            Ẩn
-                                        </>
-                                    )}
-                                </button>
-                            </td>
-
-                            {/* Actions */}
-                            <td>
-                                <div className="flex items-center justify-center gap-2">
-                                    <Link
-                                        to={`/admin/categories/edit/${category.id}`}
-                                        className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                                        title="Sửa"
+                                            }`}
                                     >
-                                        <PencilIcon className="h-5 w-5" />
-                                    </Link>
-                                    <button
-                                        onClick={() => onDelete?.(category.id)}
-                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                        title="Xóa"
-                                    >
-                                        <TrashIcon className="h-5 w-5" />
+                                        {category.active ? (
+                                            <>
+                                                <CheckCircleIcon className="h-4 w-4" />
+                                                Hoạt động
+                                            </>
+                                        ) : (
+                                            <>
+                                                <XCircleIcon className="h-4 w-4" />
+                                                Ẩn
+                                            </>
+                                        )}
                                     </button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
+                                </td>
+
+                                {/* Actions */}
+                                <td>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Link
+                                            to={`/admin/categories/edit/${category.id}`}
+                                            className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                            title="Sửa"
+                                        >
+                                            <PencilIcon className="h-5 w-5" />
+                                        </Link>
+                                        <button
+                                            onClick={() => onDelete?.(category.id)}
+                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Xóa"
+                                        >
+                                            <TrashIcon className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        )
+                    })}
                 </tbody>
             </table>
         </div>

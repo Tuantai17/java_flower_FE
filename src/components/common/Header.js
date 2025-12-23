@@ -1,16 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
     MagnifyingGlassIcon,
     ShoppingBagIcon,
     UserIcon,
+    UserCircleIcon,
     PhoneIcon,
     Bars3Icon,
     XMarkIcon,
     ChevronDownIcon,
-    ChevronRightIcon
+    ChevronRightIcon,
+    ArrowRightOnRectangleIcon,
+    Cog6ToothIcon,
+    ShoppingCartIcon,
+    CheckCircleIcon
 } from '@heroicons/react/24/outline';
+import { UserCircleIcon as UserCircleSolidIcon } from '@heroicons/react/24/solid';
 import categoryApi from '../../api/categoryApi';
+import { useAuth } from '../../context/AuthContext';
+import { useApp } from '../../context/AppContext';
+import CartIcon from './CartIcon';
 
 const Header = () => {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -19,8 +28,27 @@ const Header = () => {
     const [categories, setCategories] = useState([]);
     const [openDropdown, setOpenDropdown] = useState(null);
     const [mobileOpenCategory, setMobileOpenCategory] = useState(null);
+    const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+    const [showLoginSuccess, setShowLoginSuccess] = useState(false);
+
+    const accountDropdownRef = useRef(null);
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Lấy thông tin user từ AuthContext
+    const { user, logout, justLoggedIn, clearLoginNotification } = useAuth();
+
+    // Hiển thị thông báo đăng nhập thành công CHỈ khi vừa thực hiện đăng nhập
+    useEffect(() => {
+        if (justLoggedIn && user) {
+            setShowLoginSuccess(true);
+            const timer = setTimeout(() => {
+                setShowLoginSuccess(false);
+                clearLoginNotification(); // Reset flag sau khi hiển thị xong
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [justLoggedIn, user, clearLoginNotification]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -30,16 +58,25 @@ const Header = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // Đóng dropdown khi click ra ngoài
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (accountDropdownRef.current && !accountDropdownRef.current.contains(event.target)) {
+                setShowAccountDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     useEffect(() => {
         const fetchCategories = async () => {
             try {
                 const data = await categoryApi.getMenu();
-                // Data từ API đã có cấu trúc đúng với children
                 console.log('Categories loaded:', data);
-                setCategories(data || []);
+                setCategories(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error('Error fetching categories:', error);
-                // Không sử dụng mock data - chỉ lấy từ API
                 setCategories([]);
             }
         };
@@ -52,6 +89,12 @@ const Header = () => {
             navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
             setSearchQuery('');
         }
+    };
+
+    const handleLogout = () => {
+        logout();
+        setShowAccountDropdown(false);
+        navigate('/');
     };
 
     // Kiểm tra category đang active
@@ -72,7 +115,21 @@ const Header = () => {
     return (
         <header className={`sticky top-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/95 backdrop-blur-md shadow-md' : 'bg-white'
             }`}>
-            {/* Top Bar */}
+
+            {/* Toast thông báo đăng nhập thành công */}
+            {showLoginSuccess && user && (
+                <div className="fixed top-4 right-4 z-[100] animate-slide-in-right">
+                    <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+                        <CheckCircleIcon className="h-6 w-6" />
+                        <div>
+                            <p className="font-medium">Đăng nhập thành công!</p>
+                            <p className="text-sm text-green-100">Xin chào, {user.fullName || user.username}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Top Bar - Đơn giản hơn, không có account dropdown */}
             <div className="bg-gradient-to-r from-pink-600 to-rose-500 text-white text-sm py-2">
                 <div className="container-custom flex justify-between items-center">
                     <div className="flex items-center gap-2">
@@ -80,16 +137,10 @@ const Header = () => {
                         <span>HOTLINE: <strong>1900 633 045</strong> | 0865 160 360</span>
                     </div>
                     <div className="hidden md:flex items-center gap-6">
-                        <Link to="#" className="hover:text-pink-200 transition-colors">
-                            <span className="flex items-center gap-1">
-                                <UserIcon className="h-4 w-4" />
-                                Tài khoản
-                            </span>
-                        </Link>
-                        <Link to="#" className="hover:text-pink-200 transition-colors">
+                        <Link to="/cart" className="hover:text-pink-200 transition-colors">
                             Giỏ hàng
                         </Link>
-                        <Link to="#" className="hover:text-pink-200 transition-colors">
+                        <Link to="/checkout" className="hover:text-pink-200 transition-colors">
                             Thanh toán
                         </Link>
                     </div>
@@ -127,14 +178,111 @@ const Header = () => {
                     </form>
 
                     {/* Icons */}
-                    <div className="flex items-center gap-4">
-                        {/* Cart */}
-                        <Link to="#" className="relative p-2 hover:bg-pink-50 rounded-full transition-colors">
-                            <ShoppingBagIcon className="h-6 w-6 text-gray-700" />
-                            <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                                0
-                            </span>
-                        </Link>
+                    <div className="flex items-center gap-3">
+                        {/* User Icon với Dropdown - Desktop */}
+                        <div className="hidden lg:block relative" ref={accountDropdownRef}>
+                            <button
+                                onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+                                className={`relative p-2 rounded-full transition-colors flex items-center gap-2 ${user ? 'bg-rose-100 hover:bg-rose-200' : 'hover:bg-pink-50'}`}
+                            >
+                                {user ? (
+                                    <>
+                                        <UserCircleSolidIcon className="h-6 w-6 text-rose-600" />
+                                        <span className="text-sm font-medium text-gray-700 max-w-[100px] truncate hidden xl:block">
+                                            {user.fullName || user.username}
+                                        </span>
+                                        <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform hidden xl:block ${showAccountDropdown ? 'rotate-180' : ''}`} />
+                                        <span className="absolute top-0 right-0 bg-green-500 w-3 h-3 rounded-full border-2 border-white"></span>
+                                    </>
+                                ) : (
+                                    <UserIcon className="h-6 w-6 text-gray-700" />
+                                )}
+                            </button>
+
+                            {/* Account Dropdown Menu */}
+                            {showAccountDropdown && (
+                                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 animate-fade-in">
+                                    {user ? (
+                                        <>
+                                            {/* User Info Header */}
+                                            <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-rose-50 to-pink-50">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center">
+                                                        <UserCircleSolidIcon className="h-6 w-6 text-white" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-gray-800 truncate">{user.fullName || user.username}</p>
+                                                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Menu Items */}
+                                            <Link
+                                                to="/account"
+                                                onClick={() => setShowAccountDropdown(false)}
+                                                className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                                            >
+                                                <UserCircleIcon className="h-5 w-5" />
+                                                <span>Tài khoản của tôi</span>
+                                            </Link>
+                                            <Link
+                                                to="/profile/orders"
+                                                onClick={() => setShowAccountDropdown(false)}
+                                                className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                                            >
+                                                <ShoppingCartIcon className="h-5 w-5" />
+                                                <span>Đơn hàng của tôi</span>
+                                            </Link>
+                                            <Link
+                                                to="/settings"
+                                                onClick={() => setShowAccountDropdown(false)}
+                                                className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                                            >
+                                                <Cog6ToothIcon className="h-5 w-5" />
+                                                <span>Cài đặt</span>
+                                            </Link>
+
+                                            {/* Divider */}
+                                            <div className="border-t border-gray-100 my-2"></div>
+
+                                            {/* Logout */}
+                                            <button
+                                                onClick={handleLogout}
+                                                className="flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+                                            >
+                                                <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                                                <span>Đăng xuất</span>
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {/* Chưa đăng nhập */}
+                                            <div className="px-4 py-3 border-b border-gray-100">
+                                                <p className="text-gray-600 text-sm">Chào mừng bạn đến với FlowerCorner!</p>
+                                            </div>
+                                            <Link
+                                                to="/login"
+                                                onClick={() => setShowAccountDropdown(false)}
+                                                className="flex items-center gap-3 px-4 py-3 text-white bg-rose-500 hover:bg-rose-600 transition-colors mx-3 my-2 rounded-lg justify-center font-medium"
+                                            >
+                                                Đăng nhập
+                                            </Link>
+                                            <Link
+                                                to="/register"
+                                                onClick={() => setShowAccountDropdown(false)}
+                                                className="flex items-center gap-3 px-4 py-3 text-rose-600 border border-rose-500 hover:bg-rose-50 transition-colors mx-3 mb-2 rounded-lg justify-center font-medium"
+                                            >
+                                                Đăng ký tài khoản
+                                            </Link>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Cart với count từ AppContext */}
+                        <CartIcon showDropdown={true} />
 
                         {/* Mobile Menu Toggle */}
                         <button
@@ -262,6 +410,44 @@ const Header = () => {
             {/* Mobile Menu */}
             {isMobileMenuOpen && (
                 <div className="lg:hidden bg-white border-t border-gray-100 shadow-lg max-h-[80vh] overflow-y-auto">
+                    {/* Mobile User Account */}
+                    <div className="p-4 bg-gradient-to-r from-rose-50 to-pink-50 border-b border-gray-100">
+                        {user ? (
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-rose-500 rounded-full flex items-center justify-center">
+                                    <UserCircleSolidIcon className="h-8 w-8 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-semibold text-gray-800">{user.fullName || user.username}</p>
+                                    <p className="text-xs text-gray-500">{user.email}</p>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                >
+                                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex gap-3">
+                                <Link
+                                    to="/login"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="flex-1 py-2.5 bg-rose-500 text-white rounded-lg text-center font-medium hover:bg-rose-600 transition-colors"
+                                >
+                                    Đăng nhập
+                                </Link>
+                                <Link
+                                    to="/register"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="flex-1 py-2.5 border border-rose-500 text-rose-600 rounded-lg text-center font-medium hover:bg-rose-50 transition-colors"
+                                >
+                                    Đăng ký
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Mobile Search */}
                     <form onSubmit={handleSearch} className="p-4 border-b border-gray-100">
                         <div className="relative">
