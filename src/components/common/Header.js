@@ -335,6 +335,23 @@ const Header = () => {
                                 Sản Phẩm
                             </Link>
                         </li>
+                        {/* Trang Giáng Sinh - Me Ry Chit Mot */}
+                        <li>
+                            <Link
+                                to="/christmas"
+                                className={`
+                                    flex items-center gap-1 px-4 py-3.5 font-semibold text-sm uppercase tracking-wide
+                                    transition-all duration-300 border-b-2
+                                    ${isActivePage('/christmas')
+                                        ? 'text-red-600 border-red-500'
+                                        : 'text-green-700 border-transparent hover:text-red-600 hover:border-red-400'
+                                    }
+                                `}
+                            >
+                                <span className="text-lg">🎄</span>
+                                Giáng Sinh
+                            </Link>
+                        </li>
                         {/* Dynamic Categories */}
                         {categories.map((category) => (
                             <li
@@ -488,6 +505,20 @@ const Header = () => {
                                 `}
                             >
                                 Sản Phẩm
+                            </Link>
+                        </li>
+                        {/* Trang Giáng Sinh Mobile */}
+                        <li className="border-b border-gray-50">
+                            <Link
+                                to="/christmas"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`
+                                    flex items-center gap-2 px-6 py-3.5 font-semibold text-sm uppercase
+                                    ${isActivePage('/christmas') ? 'text-red-600 bg-red-50' : 'text-green-700'}
+                                `}
+                            >
+                                <span className="text-lg">🎄</span>
+                                Giáng Sinh
                             </Link>
                         </li>
                         {/* Dynamic Categories */}

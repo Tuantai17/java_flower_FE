@@ -32,6 +32,7 @@ import VoucherPage from './pages/user/VoucherPage';
 import MyOrdersPage from './pages/user/MyOrdersPage';
 import OrderDetailPage from './pages/user/OrderDetailPage';
 import PaymentResultPage from './pages/user/PaymentResultPage';
+import ChristmasPage from './pages/user/ChristmasPage';
 
 // AUTH Pages (User)
 import LoginPage from "./pages/user/LoginPage";
@@ -97,6 +98,9 @@ function App() {
 
                   {/* PAYMENT CALLBACK (MoMo, VNPay) */}
                   <Route path="payment/result" element={<PaymentResultPage />} />
+
+                  {/* CHRISTMAS PAGE - Me Ry Chit Mot */}
+                  <Route path="christmas" element={<ChristmasPage />} />
 
                   {/* AUTH USER */}
                   <Route path="login" element={<LoginPage />} />
