@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatPrice } from '../../utils/formatPrice';
 import { getImageUrl } from '../../utils/imageUrl';
-import orderApi, { PAYMENT_METHODS } from '../../api/orderApi';
+import orderApi, { PAYMENT_METHODS, MOMO_TYPES } from '../../api/orderApi';
 import cartApi from '../../api/cartApi';
 import {
     ShoppingBagIcon,
@@ -51,6 +51,9 @@ const CheckoutPage = () => {
         note: '',
         paymentMethod: PAYMENT_METHODS.COD,
     });
+
+    // MoMo sub-type state (QR hoặc CARD)
+    const [momoType, setMomoType] = useState(MOMO_TYPES.QR);
 
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
@@ -181,6 +184,12 @@ const CheckoutPage = () => {
                 // Thông tin thanh toán
                 paymentMethod: formData.paymentMethod,
 
+                // MoMo type (chỉ khi chọn MOMO)
+                ...(formData.paymentMethod === PAYMENT_METHODS.MOMO && {
+                    momoType: momoType,
+                    requestType: momoType, // Backend có thể cần field này
+                }),
+
                 // Voucher (nếu có)
                 voucherCode: appliedVoucher?.code || null,
 
@@ -193,47 +202,32 @@ const CheckoutPage = () => {
 
             const result = await orderApi.checkout(checkoutData);
 
-            console.log('✅ Full checkout response:', result);
-            console.log('✅ Checkout result type:', typeof result);
-            console.log('✅ Checkout result keys:', result ? Object.keys(result) : 'null');
+            console.log('✅ Checkout response:', result);
 
-            // Handle MoMo/VNPay redirect
-            // Backend có thể trả về paymentUrl ở nhiều vị trí khác nhau
-            let paymentUrl = null;
+            // ========================================
+            // XỬ LÝ PAYMENT URL (MoMo/VNPay)
+            // ========================================
+            // orderApi.checkout đã xử lý và trả về paymentUrl ở top level
+            const paymentUrl = result?.paymentUrl;
 
-            // Kiểm tra các vị trí có thể chứa paymentUrl
-            if (result?.paymentUrl) {
-                paymentUrl = result.paymentUrl;
-                console.log('📍 Found paymentUrl at result.paymentUrl:', paymentUrl);
-            } else if (result?.data?.paymentUrl) {
-                paymentUrl = result.data.paymentUrl;
-                console.log('📍 Found paymentUrl at result.data.paymentUrl:', paymentUrl);
-            } else if (result?.payment_url) {
-                paymentUrl = result.payment_url;
-                console.log('📍 Found paymentUrl at result.payment_url:', paymentUrl);
-            } else if (result?.data?.payment_url) {
-                paymentUrl = result.data.payment_url;
-                console.log('📍 Found paymentUrl at result.data.payment_url:', paymentUrl);
-            }
+            console.log('📍 Payment Method:', formData.paymentMethod);
+            console.log('📍 Payment URL:', paymentUrl);
 
-            // Log toàn bộ result để debug
-            console.log('📍 Final paymentUrl:', paymentUrl);
-            console.log('📍 Is MOMO payment:', formData.paymentMethod === PAYMENT_METHODS.MOMO);
-
-            // Nếu có paymentUrl và không phải COD -> redirect đến trang thanh toán
+            // Redirect nếu có paymentUrl (MOMO, VNPAY)
             if (paymentUrl && formData.paymentMethod !== PAYMENT_METHODS.COD) {
-                console.log('🔄 Redirecting to payment gateway:', paymentUrl);
-                setLoadingText('Đang chuyển đến trang thanh toán MoMo...');
+                console.log('🔄 Redirecting to payment gateway...');
+                setLoadingText('Đang chuyển đến trang thanh toán...');
 
-                // Validate URL trước khi redirect
+                // Validate URL
                 try {
                     new URL(paymentUrl);
 
                     // Delay nhỏ để user thấy loading message
                     setTimeout(() => {
                         window.location.href = paymentUrl;
-                    }, 800);
+                    }, 500);
                     return;
+
                 } catch (urlError) {
                     console.error('❌ Invalid payment URL:', paymentUrl);
                     setApiError('URL thanh toán không hợp lệ. Vui lòng liên hệ CSKH.');
@@ -242,30 +236,27 @@ const CheckoutPage = () => {
                 }
             }
 
-            // Nếu chọn MOMO/VNPAY nhưng không có paymentUrl -> cảnh báo
+            // Cảnh báo nếu chọn MOMO/VNPAY nhưng không có paymentUrl
             if (formData.paymentMethod !== PAYMENT_METHODS.COD && !paymentUrl) {
-                console.warn('⚠️ Payment method is', formData.paymentMethod, 'but no paymentUrl received!');
-                console.warn('⚠️ Full result for debugging:', JSON.stringify(result, null, 2));
-
-                // Hiển thị thông báo lỗi nhưng vẫn cho đơn hàng được tạo
+                console.warn('⚠️ No paymentUrl for', formData.paymentMethod);
                 setApiError(
-                    'Đơn hàng đã được tạo nhưng không thể kết nối đến cổng thanh toán MoMo. ' +
-                    'Vui lòng kiểm tra đơn hàng trong "Đơn hàng của tôi" hoặc liên hệ CSKH.'
+                    'Đơn hàng đã được tạo nhưng không thể kết nối cổng thanh toán. ' +
+                    'Vui lòng kiểm tra "Đơn hàng của tôi" hoặc liên hệ CSKH.'
                 );
             }
 
-            // COD or fallback - show success page
-            console.log('✅ Order created successfully, showing success page');
+            // ========================================
+            // COD hoặc FALLBACK - Hiển thị trang thành công
+            // ========================================
+            console.log('✅ Order created successfully');
             clearCart();
             sessionStorage.removeItem('appliedVoucher');
             setOrderData(result);
             setOrderSuccess(true);
 
         } catch (error) {
-            console.error('❌ Checkout error:', error);
-            console.error('❌ Error response:', error.response?.data);
+            console.error('❌ Checkout error:', error.response?.data || error.message);
 
-            // Extract error message
             const errorMessage = error.response?.data?.message
                 || error.response?.data?.error
                 || error.message
@@ -327,6 +318,8 @@ const CheckoutPage = () => {
                             <PaymentMethodSection
                                 selectedMethod={formData.paymentMethod}
                                 onChange={(method) => setFormData(prev => ({ ...prev, paymentMethod: method }))}
+                                momoType={momoType}
+                                onMomoTypeChange={setMomoType}
                             />
 
                             {/* Order Note */}
@@ -457,8 +450,9 @@ const ShippingInfoSection = ({ formData, errors, onChange }) => {
 
 /**
  * Payment Method Section
+ * Bao gồm các phương thức thanh toán và lựa chọn con cho MoMo
  */
-const PaymentMethodSection = ({ selectedMethod, onChange }) => {
+const PaymentMethodSection = ({ selectedMethod, onChange, momoType, onMomoTypeChange }) => {
     const paymentMethods = [
         {
             id: PAYMENT_METHODS.COD,
@@ -473,6 +467,7 @@ const PaymentMethodSection = ({ selectedMethod, onChange }) => {
             description: 'Thanh toán qua ví điện tử MoMo',
             icon: '📱',
             disabled: false,
+            hasSubOptions: true, // Đánh dấu có lựa chọn con
         },
         {
             id: PAYMENT_METHODS.VNPAY,
@@ -490,6 +485,22 @@ const PaymentMethodSection = ({ selectedMethod, onChange }) => {
         },
     ];
 
+    // Các lựa chọn con cho MoMo
+    const momoSubOptions = [
+        {
+            id: MOMO_TYPES.QR,
+            name: 'Thanh toán bằng QR MoMo',
+            description: 'Quét mã QR bằng ứng dụng MoMo',
+            icon: '📲',
+        },
+        {
+            id: MOMO_TYPES.CARD,
+            name: 'Thanh toán bằng thẻ / MoMo ATM',
+            description: 'Dùng thẻ ATM nội địa hoặc thẻ quốc tế',
+            icon: '💳',
+        },
+    ];
+
     return (
         <div className="bg-white rounded-2xl shadow-sm p-6">
             <div className="flex items-center gap-3 mb-6">
@@ -501,34 +512,91 @@ const PaymentMethodSection = ({ selectedMethod, onChange }) => {
 
             <div className="space-y-3">
                 {paymentMethods.map((method) => (
-                    <label
-                        key={method.id}
-                        className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedMethod === method.id
-                            ? 'border-rose-500 bg-rose-50'
-                            : 'border-gray-200 hover:border-rose-200'
-                            } ${method.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        <input
-                            type="radio"
-                            name="paymentMethod"
-                            value={method.id}
-                            checked={selectedMethod === method.id}
-                            onChange={() => !method.disabled && onChange(method.id)}
-                            disabled={method.disabled}
-                            className="w-5 h-5 text-rose-500 focus:ring-rose-500"
-                        />
-                        <span className="text-2xl">{method.icon}</span>
-                        <div className="flex-1">
-                            <p className="font-medium text-gray-800">
-                                {method.name}
-                                {method.disabled && <span className="text-xs text-gray-400 ml-2">(Sắp ra mắt)</span>}
-                            </p>
-                            <p className="text-sm text-gray-500">{method.description}</p>
-                        </div>
-                        {selectedMethod === method.id && !method.disabled && (
-                            <CheckCircleIcon className="h-6 w-6 text-rose-500" />
+                    <div key={method.id}>
+                        {/* Payment Method Option */}
+                        <label
+                            className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedMethod === method.id
+                                    ? 'border-rose-500 bg-rose-50'
+                                    : 'border-gray-200 hover:border-rose-200'
+                                } ${method.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            <input
+                                type="radio"
+                                name="paymentMethod"
+                                value={method.id}
+                                checked={selectedMethod === method.id}
+                                onChange={() => !method.disabled && onChange(method.id)}
+                                disabled={method.disabled}
+                                className="w-5 h-5 text-rose-500 focus:ring-rose-500"
+                            />
+                            <span className="text-2xl">{method.icon}</span>
+                            <div className="flex-1">
+                                <p className="font-medium text-gray-800">
+                                    {method.name}
+                                    {method.disabled && (
+                                        <span className="text-xs text-gray-400 ml-2">(Sắp ra mắt)</span>
+                                    )}
+                                </p>
+                                <p className="text-sm text-gray-500">{method.description}</p>
+                            </div>
+                            {selectedMethod === method.id && !method.disabled && (
+                                <CheckCircleIcon className="h-6 w-6 text-rose-500" />
+                            )}
+                        </label>
+
+                        {/* MoMo Sub-Options - Hiển thị khi chọn MoMo */}
+                        {method.id === PAYMENT_METHODS.MOMO && selectedMethod === PAYMENT_METHODS.MOMO && (
+                            <div className="mt-3 ml-8 p-4 bg-gradient-to-r from-pink-50 to-rose-50 border border-rose-200 rounded-xl animate-fadeIn">
+                                <p className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+                                    <span className="text-lg">🔸</span>
+                                    Chọn hình thức thanh toán MoMo
+                                </p>
+                                <div className="space-y-2">
+                                    {momoSubOptions.map((option) => (
+                                        <label
+                                            key={option.id}
+                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${momoType === option.id
+                                                    ? 'bg-white border-2 border-rose-400 shadow-sm'
+                                                    : 'bg-white/50 border border-gray-200 hover:border-rose-300'
+                                                }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="momoType"
+                                                value={option.id}
+                                                checked={momoType === option.id}
+                                                onChange={() => onMomoTypeChange(option.id)}
+                                                className="w-4 h-4 text-rose-500 focus:ring-rose-500"
+                                            />
+                                            <span className="text-xl">{option.icon}</span>
+                                            <div className="flex-1">
+                                                <p className="font-medium text-gray-700 text-sm">
+                                                    {option.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500">{option.description}</p>
+                                            </div>
+                                            {momoType === option.id && (
+                                                <CheckCircleIcon className="h-5 w-5 text-rose-500" />
+                                            )}
+                                        </label>
+                                    ))}
+                                </div>
+
+                                {/* MoMo Tips */}
+                                <div className="mt-3 p-2 bg-pink-100/50 rounded-lg">
+                                    <p className="text-xs text-pink-700 flex items-start gap-1">
+                                        <span>💡</span>
+                                        <span>
+                                            {momoType === MOMO_TYPES.QR
+                                                ? 'Bạn sẽ được chuyển đến trang quét mã QR bằng ứng dụng MoMo'
+                                                : 'Bạn sẽ nhập thông tin thẻ ATM/Visa/MasterCard để thanh toán qua MoMo'
+                                            }
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
                         )}
-                    </label>
+                    </div>
                 ))}
             </div>
         </div>

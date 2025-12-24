@@ -1,7 +1,9 @@
 import axiosInstance from './axiosConfig';
 
 /**
+ * ========================================
  * Order API Service
+ * ========================================
  * 
  * API Endpoints (theo Backend):
  * ================== USER ==================
@@ -15,33 +17,9 @@ import axiosInstance from './axiosConfig';
  * PUT    /api/admin/orders/{id}/status     : Cập nhật trạng thái
  */
 
-/**
- * Helper để unwrap response từ backend
- * Giữ nguyên paymentUrl nếu có
- */
-const unwrapResponse = (response) => {
-    console.log('Order API Raw Response:', response.data);
-
-    if (response.data && typeof response.data === 'object') {
-        // Nếu response có dạng { data: {...}, success: true, ... }
-        if ('data' in response.data) {
-            const innerData = response.data.data;
-
-            // Nếu có paymentUrl ở ngoài cùng, copy vào innerData
-            if (response.data.paymentUrl && innerData) {
-                innerData.paymentUrl = response.data.paymentUrl;
-            }
-            // Tương tự cho payment_url (snake_case)
-            if (response.data.payment_url && innerData) {
-                innerData.paymentUrl = response.data.payment_url;
-            }
-
-            console.log('Order API Unwrapped Data:', innerData);
-            return innerData;
-        }
-    }
-    return response.data;
-};
+// ====================
+// CONSTANTS
+// ====================
 
 /**
  * Order Status Constants (match với backend enum)
@@ -75,6 +53,132 @@ export const PAYMENT_STATUS = {
     REFUNDED: 'REFUNDED',         // Đã hoàn tiền
 };
 
+/**
+ * MoMo Payment Types - Các hình thức thanh toán MoMo
+ * Theo MoMo API documentation:
+ * - WALLET: Quét mã QR bằng app MoMo
+ * - CARD: Thanh toán bằng thẻ ATM/Visa/MasterCard qua MoMo
+ */
+export const MOMO_TYPES = {
+    QR: 'WALLET',                 // Quét mã QR MoMo (captureWallet)
+    CARD: 'CARD',                 // Thẻ ATM / Thẻ quốc tế qua MoMo (payWithATM)
+};
+
+// ====================
+// HELPER FUNCTIONS
+// ====================
+
+/**
+ * Trích xuất paymentUrl từ response
+ * Backend có thể trả về paymentUrl ở nhiều vị trí khác nhau
+ * 
+ * @param {Object} data - Response data từ backend
+ * @returns {string|null} - Payment URL hoặc null
+ */
+const extractPaymentUrl = (data) => {
+    if (!data) return null;
+
+    // Thử các vị trí có thể chứa paymentUrl
+    const possiblePaths = [
+        data.paymentUrl,
+        data.payment_url,
+        data.data?.paymentUrl,
+        data.data?.payment_url,
+        data.order?.paymentUrl,
+        data.order?.payment_url,
+    ];
+
+    for (const url of possiblePaths) {
+        if (url && typeof url === 'string' && url.startsWith('http')) {
+            return url;
+        }
+    }
+
+    return null;
+};
+
+/**
+ * Unwrap response từ backend
+ * Xử lý các dạng response wrapper khác nhau
+ * 
+ * @param {Object} response - Axios response
+ * @returns {Object} - Unwrapped data với paymentUrl (nếu có)
+ */
+const unwrapResponse = (response) => {
+    if (!response.data) return null;
+
+    const data = response.data;
+
+    // Nếu response có dạng { data: {...}, success: true, ... }
+    if (typeof data === 'object' && 'data' in data) {
+        const innerData = data.data || {};
+
+        // Preserve paymentUrl từ outer level
+        const paymentUrl = extractPaymentUrl(data);
+        if (paymentUrl) {
+            innerData.paymentUrl = paymentUrl;
+        }
+
+        return innerData;
+    }
+
+    return data;
+};
+
+/**
+ * Format trạng thái đơn hàng sang tiếng Việt
+ */
+export const formatOrderStatus = (status) => {
+    const statusMap = {
+        [ORDER_STATUS.PENDING]: 'Chờ xác nhận',
+        [ORDER_STATUS.CONFIRMED]: 'Đã xác nhận',
+        [ORDER_STATUS.PROCESSING]: 'Đang xử lý',
+        [ORDER_STATUS.DELIVERING]: 'Đang giao hàng',
+        [ORDER_STATUS.COMPLETED]: 'Hoàn thành',
+        [ORDER_STATUS.CANCELLED]: 'Đã hủy',
+    };
+    return statusMap[status] || status;
+};
+
+/**
+ * Format phương thức thanh toán sang tiếng Việt
+ */
+export const formatPaymentMethod = (method) => {
+    const methodMap = {
+        [PAYMENT_METHODS.COD]: 'Thanh toán khi nhận hàng (COD)',
+        [PAYMENT_METHODS.MOMO]: 'Ví MoMo',
+        [PAYMENT_METHODS.VNPAY]: 'VNPay',
+        [PAYMENT_METHODS.BANK_TRANSFER]: 'Chuyển khoản ngân hàng',
+    };
+    return methodMap[method] || method;
+};
+
+/**
+ * Lấy màu badge cho trạng thái
+ */
+export const getStatusColor = (status) => {
+    const colorMap = {
+        [ORDER_STATUS.PENDING]: 'bg-yellow-100 text-yellow-700',
+        [ORDER_STATUS.CONFIRMED]: 'bg-blue-100 text-blue-700',
+        [ORDER_STATUS.PROCESSING]: 'bg-purple-100 text-purple-700',
+        [ORDER_STATUS.DELIVERING]: 'bg-indigo-100 text-indigo-700',
+        [ORDER_STATUS.COMPLETED]: 'bg-green-100 text-green-700',
+        [ORDER_STATUS.CANCELLED]: 'bg-red-100 text-red-700',
+    };
+    return colorMap[status] || 'bg-gray-100 text-gray-700';
+};
+
+/**
+ * Kiểm tra đơn hàng có thể hủy không
+ */
+export const canCancelOrder = (status) => {
+    return [ORDER_STATUS.PENDING, ORDER_STATUS.CONFIRMED].includes(status);
+};
+
+// ====================
+// API FUNCTIONS
+// ====================
+
 const orderApi = {
     // ==================== USER APIs ====================
 
@@ -90,50 +194,52 @@ const orderApi = {
      * @param {string} checkoutData.paymentMethod - Phương thức thanh toán (COD, MOMO, VNPAY)
      * @param {string} checkoutData.voucherCode - Mã voucher (optional)
      * @param {string} checkoutData.note - Ghi chú (optional)
-     * @param {Array} checkoutData.items - Danh sách sản phẩm [{ productId, quantity }]
      * 
-     * @returns {Object} OrderDTO với paymentUrl (nếu là MOMO/VNPAY)
+     * @returns {Promise<Object>} OrderDTO với paymentUrl (nếu là MOMO/VNPAY)
      */
     checkout: async (checkoutData) => {
         console.log('📤 Creating order (checkout):', checkoutData);
         console.log('📤 Payment method:', checkoutData.paymentMethod);
 
+        // Log MoMo specific info
+        if (checkoutData.paymentMethod === PAYMENT_METHODS.MOMO) {
+            console.log('📤 MoMo Type:', checkoutData.momoType || checkoutData.requestType);
+        }
+
         try {
             const response = await axiosInstance.post('/orders/checkout', checkoutData);
 
-            console.log('✅ Raw checkout response:', response);
-            console.log('✅ Response data:', response.data);
-            console.log('✅ Response data.data:', response.data?.data);
-            console.log('✅ PaymentUrl in response.data:', response.data?.paymentUrl);
-            console.log('✅ PaymentUrl in response.data.data:', response.data?.data?.paymentUrl);
+            console.log('✅ Raw checkout response:', response.data);
 
-            // Đặc biệt xử lý cho MOMO - preserve paymentUrl
-            if (checkoutData.paymentMethod === 'MOMO') {
-                const result = response.data;
+            const data = response.data;
 
-                // Trả về toàn bộ response nếu có paymentUrl ở ngoài cùng
-                if (result?.paymentUrl) {
-                    console.log('✅ Found paymentUrl at root level:', result.paymentUrl);
+            // Trích xuất paymentUrl
+            const paymentUrl = extractPaymentUrl(data);
+
+            // Xử lý đặc biệt cho MOMO
+            if (checkoutData.paymentMethod === PAYMENT_METHODS.MOMO) {
+                console.log('🔍 Looking for paymentUrl in MOMO response...');
+
+                if (paymentUrl) {
+                    console.log('✅ Found paymentUrl:', paymentUrl);
+
+                    // Trả về object với paymentUrl ở top level
+                    const result = {
+                        ...unwrapResponse(response),
+                        paymentUrl,
+                    };
+
                     return result;
-                }
-
-                // Hoặc nếu có trong data
-                if (result?.data?.paymentUrl) {
-                    console.log('✅ Found paymentUrl in data:', result.data.paymentUrl);
-                    return result.data;
-                }
-
-                // Hoặc payment_url (snake_case)
-                if (result?.payment_url) {
-                    console.log('✅ Found payment_url at root level:', result.payment_url);
-                    result.paymentUrl = result.payment_url;
-                    return result;
+                } else {
+                    console.warn('⚠️ No paymentUrl found in MOMO response!');
+                    console.warn('⚠️ Response structure:', JSON.stringify(data, null, 2));
                 }
             }
 
             return unwrapResponse(response);
+
         } catch (error) {
-            console.error('❌ Checkout error:', error.response?.data);
+            console.error('❌ Checkout error:', error.response?.data || error.message);
             throw error;
         }
     },
@@ -190,57 +296,13 @@ const orderApi = {
         return unwrapResponse(response);
     },
 
-    // ==================== HELPER FUNCTIONS ====================
+    // ==================== EXPORTED HELPERS ====================
+    // (Giữ lại cho backward compatibility)
 
-    /**
-     * Format trạng thái đơn hàng sang tiếng Việt
-     */
-    formatOrderStatus: (status) => {
-        const statusMap = {
-            [ORDER_STATUS.PENDING]: 'Chờ xác nhận',
-            [ORDER_STATUS.CONFIRMED]: 'Đã xác nhận',
-            [ORDER_STATUS.PROCESSING]: 'Đang xử lý',
-            [ORDER_STATUS.DELIVERING]: 'Đang giao hàng',
-            [ORDER_STATUS.COMPLETED]: 'Hoàn thành',
-            [ORDER_STATUS.CANCELLED]: 'Đã hủy',
-        };
-        return statusMap[status] || status;
-    },
-
-    /**
-     * Format phương thức thanh toán sang tiếng Việt
-     */
-    formatPaymentMethod: (method) => {
-        const methodMap = {
-            [PAYMENT_METHODS.COD]: 'Thanh toán khi nhận hàng (COD)',
-            [PAYMENT_METHODS.MOMO]: 'Ví MoMo',
-            [PAYMENT_METHODS.VNPAY]: 'VNPay',
-            [PAYMENT_METHODS.BANK_TRANSFER]: 'Chuyển khoản ngân hàng',
-        };
-        return methodMap[method] || method;
-    },
-
-    /**
-     * Lấy màu badge cho trạng thái
-     */
-    getStatusColor: (status) => {
-        const colorMap = {
-            [ORDER_STATUS.PENDING]: 'bg-yellow-100 text-yellow-700',
-            [ORDER_STATUS.CONFIRMED]: 'bg-blue-100 text-blue-700',
-            [ORDER_STATUS.PROCESSING]: 'bg-purple-100 text-purple-700',
-            [ORDER_STATUS.DELIVERING]: 'bg-indigo-100 text-indigo-700',
-            [ORDER_STATUS.COMPLETED]: 'bg-green-100 text-green-700',
-            [ORDER_STATUS.CANCELLED]: 'bg-red-100 text-red-700',
-        };
-        return colorMap[status] || 'bg-gray-100 text-gray-700';
-    },
-
-    /**
-     * Kiểm tra đơn hàng có thể hủy không
-     */
-    canCancelOrder: (status) => {
-        return [ORDER_STATUS.PENDING, ORDER_STATUS.CONFIRMED].includes(status);
-    },
+    formatOrderStatus,
+    formatPaymentMethod,
+    getStatusColor,
+    canCancelOrder,
 };
 
 export default orderApi;

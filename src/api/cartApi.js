@@ -1,23 +1,26 @@
 import axiosInstance from './axiosConfig';
 
 /**
+ * ========================================
  * Cart API Service
+ * ========================================
  * 
- * API Endpoints:
+ * API Endpoints (Backend):
  * GET    /api/cart                : Lấy giỏ hàng của user
  * POST   /api/cart/add            : Thêm sản phẩm vào giỏ
  * PUT    /api/cart/items/{id}     : Cập nhật số lượng
  * DELETE /api/cart/items/{id}     : Xóa item khỏi giỏ
  * DELETE /api/cart/clear          : Xóa toàn bộ giỏ hàng
- * POST   /api/cart/sync           : Sync giỏ hàng từ client
  */
+
+// ====================
+// HELPER FUNCTIONS
+// ====================
 
 /**
  * Helper để unwrap response từ backend
  */
 const unwrapResponse = (response) => {
-    console.log('Cart API Response:', response.data);
-
     if (response.data && typeof response.data === 'object') {
         if ('data' in response.data) {
             return response.data.data;
@@ -25,6 +28,10 @@ const unwrapResponse = (response) => {
     }
     return response.data;
 };
+
+// ====================
+// API FUNCTIONS
+// ====================
 
 const cartApi = {
     /**
@@ -35,10 +42,10 @@ const cartApi = {
         console.log('🛒 Fetching cart...');
         try {
             const response = await axiosInstance.get('/cart');
-            console.log('✅ Cart fetched:', response.data);
+            console.log('✅ Cart fetched');
             return unwrapResponse(response);
         } catch (error) {
-            console.error('❌ Get cart error:', error.response?.data);
+            console.error('❌ Get cart error:', error.response?.data?.message || error.message);
             throw error;
         }
     },
@@ -57,10 +64,10 @@ const cartApi = {
                 productId,
                 quantity,
             });
-            console.log('✅ Added to cart:', response.data);
+            console.log('✅ Added to cart');
             return unwrapResponse(response);
         } catch (error) {
-            console.error('❌ Add to cart error:', error.response?.data);
+            console.error('❌ Add to cart error:', error.response?.data?.message || error.message);
             throw error;
         }
     },
@@ -75,10 +82,10 @@ const cartApi = {
             const response = await axiosInstance.put(`/cart/items/${itemId}`, {
                 quantity,
             });
-            console.log('✅ Cart item updated:', response.data);
+            console.log('✅ Cart item updated');
             return unwrapResponse(response);
         } catch (error) {
-            console.error('❌ Update cart item error:', error.response?.data);
+            console.error('❌ Update cart item error:', error.response?.data?.message || error.message);
             throw error;
         }
     },
@@ -91,10 +98,10 @@ const cartApi = {
         console.log(`🛒 Removing from cart: itemId=${itemId}`);
         try {
             const response = await axiosInstance.delete(`/cart/items/${itemId}`);
-            console.log('✅ Removed from cart:', response.data);
+            console.log('✅ Removed from cart');
             return unwrapResponse(response);
         } catch (error) {
-            console.error('❌ Remove from cart error:', error.response?.data);
+            console.error('❌ Remove from cart error:', error.response?.data?.message || error.message);
             throw error;
         }
     },
@@ -107,61 +114,47 @@ const cartApi = {
         console.log('🛒 Clearing cart...');
         try {
             const response = await axiosInstance.delete('/cart/clear');
-            console.log('✅ Cart cleared:', response.data);
+            console.log('✅ Cart cleared');
             return unwrapResponse(response);
         } catch (error) {
-            console.error('❌ Clear cart error:', error.response?.data);
-            throw error;
-        }
-    },
-
-    /**
-     * Sync giỏ hàng từ localStorage lên server
-     * Sử dụng khi user đăng nhập với giỏ hàng local
-     * Endpoint: POST /api/cart/sync
-     * 
-     * @param {Array} items - Danh sách sản phẩm [{ productId, quantity }]
-     */
-    syncCart: async (items) => {
-        console.log('🛒 Syncing cart:', items);
-        try {
-            const response = await axiosInstance.post('/cart/sync', { items });
-            console.log('✅ Cart synced:', response.data);
-            return unwrapResponse(response);
-        } catch (error) {
-            console.error('❌ Sync cart error:', error.response?.data);
+            console.error('❌ Clear cart error:', error.response?.data?.message || error.message);
             throw error;
         }
     },
 
     /**
      * Thêm nhiều sản phẩm cùng lúc vào giỏ hàng
-     * Dùng để sync từ localStorage trước khi checkout
+     * Sử dụng khi sync từ localStorage trước checkout
      * 
      * @param {Array} items - [{ productId, quantity }]
      */
     addMultipleToCart: async (items) => {
-        console.log('🛒 Adding multiple items to cart:', items);
+        console.log('🛒 Syncing cart with server...', items.length, 'items');
 
-        // Try sync endpoint first
-        try {
-            const response = await axiosInstance.post('/cart/sync', { items });
-            console.log('✅ Cart synced via /cart/sync');
-            return unwrapResponse(response);
-        } catch (syncError) {
-            console.log('⚠️ /cart/sync failed, trying individual adds...');
+        const results = [];
+        let successCount = 0;
+        let failCount = 0;
 
-            // Fallback: add items one by one
-            for (const item of items) {
-                try {
-                    await cartApi.addToCart(item.productId, item.quantity);
-                } catch (addError) {
-                    console.error(`❌ Failed to add product ${item.productId}:`, addError);
-                }
+        // Add items one by one (backend chưa có endpoint sync bulk)
+        for (const item of items) {
+            try {
+                const result = await cartApi.addToCart(item.productId, item.quantity);
+                results.push({ productId: item.productId, success: true, data: result });
+                successCount++;
+            } catch (error) {
+                console.warn(`⚠️ Failed to add product ${item.productId}`);
+                results.push({ productId: item.productId, success: false, error });
+                failCount++;
             }
+        }
 
-            // Return the cart after adding
+        console.log(`✅ Cart sync completed: ${successCount} success, ${failCount} failed`);
+
+        // Return cart after syncing
+        try {
             return await cartApi.getCart();
+        } catch {
+            return { items: results };
         }
     },
 
@@ -172,10 +165,11 @@ const cartApi = {
      */
     ensureCartSynced: async (localCart) => {
         if (!localCart || localCart.length === 0) {
-            throw new Error('Giỏ hàng trống');
+            console.log('⚠️ Local cart is empty, skipping sync');
+            return null;
         }
 
-        console.log('🔄 Ensuring cart is synced with server...');
+        console.log('🔄 Syncing local cart to server...', localCart.length, 'items');
 
         // Transform local cart to items format
         const items = localCart.map(item => ({

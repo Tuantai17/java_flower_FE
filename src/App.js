@@ -97,7 +97,11 @@ function App() {
                   <Route path="checkout" element={<CheckoutPage />} />
 
                   {/* PAYMENT CALLBACK (MoMo, VNPay) */}
+                  {/* MoMo có thể redirect về: /payment/result, /payment/success, /payment/failure */}
                   <Route path="payment/result" element={<PaymentResultPage />} />
+                  <Route path="payment/success" element={<PaymentResultPage />} />
+                  <Route path="payment/failure" element={<PaymentResultPage />} />
+                  <Route path="payment/momo/return" element={<PaymentResultPage />} />
 
                   {/* CHRISTMAS PAGE - Me Ry Chit Mot */}
                   <Route path="christmas" element={<ChristmasPage />} />
