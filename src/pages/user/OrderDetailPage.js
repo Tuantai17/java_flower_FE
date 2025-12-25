@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import orderApi, { ORDER_STATUS, PAYMENT_METHODS } from '../../api/orderApi';
 import { formatPrice } from '../../utils/formatPrice';
 import { getImageUrl } from '../../utils/imageUrl';
+import ReviewModal from '../../components/user/ReviewModal';
+import { StarIcon } from '@heroicons/react/24/solid';
 import {
     ArrowLeftIcon,
     MapPinIcon,
@@ -31,6 +33,11 @@ const OrderDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [cancelling, setCancelling] = useState(false);
+
+    // Review modal state
+    const [reviewModalOpen, setReviewModalOpen] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [reviewedProducts, setReviewedProducts] = useState(new Set());
 
     useEffect(() => {
         fetchOrderDetail();
@@ -65,6 +72,19 @@ const OrderDetailPage = () => {
         } finally {
             setCancelling(false);
         }
+    };
+
+    // Open review modal for a product
+    const openReviewModal = (product) => {
+        setSelectedProduct(product);
+        setReviewModalOpen(true);
+    };
+
+    // Handle review success
+    const handleReviewSuccess = (productId) => {
+        setReviewedProducts(prev => new Set([...prev, productId]));
+        setReviewModalOpen(false);
+        setSelectedProduct(null);
     };
 
     // Nếu chưa đăng nhập
@@ -133,6 +153,9 @@ const OrderDetailPage = () => {
     const shippingFee = order.shippingFee || order.shipping_fee || 0;
     const finalPrice = order.finalPrice || order.final_price || totalPrice;
 
+    // Check if order is completed (can review)
+    const canReview = status === ORDER_STATUS.COMPLETED;
+
     return (
         <div className="py-8 px-4 bg-gray-50 min-h-screen">
             <div className="max-w-4xl mx-auto">
@@ -172,7 +195,13 @@ const OrderDetailPage = () => {
                             <div className="divide-y divide-gray-100">
                                 {items.length > 0 ? (
                                     items.map((item, index) => (
-                                        <OrderItemRow key={item.id || index} item={item} />
+                                        <OrderItemRow
+                                            key={item.id || index}
+                                            item={item}
+                                            canReview={canReview}
+                                            isReviewed={reviewedProducts.has(item.productId || item.product?.id)}
+                                            onReview={() => openReviewModal(item)}
+                                        />
                                     ))
                                 ) : (
                                     <p className="text-gray-500 py-4">Không có sản phẩm</p>
@@ -276,14 +305,30 @@ const OrderDetailPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Review Modal */}
+            <ReviewModal
+                isOpen={reviewModalOpen}
+                onClose={() => {
+                    setReviewModalOpen(false);
+                    setSelectedProduct(null);
+                }}
+                product={selectedProduct ? {
+                    id: selectedProduct.productId || selectedProduct.product?.id,
+                    name: selectedProduct.productName || selectedProduct.product_name || selectedProduct.product?.name,
+                    imageUrl: selectedProduct.productThumbnail || selectedProduct.product?.thumbnail,
+                } : null}
+                orderId={order?.id}
+                onSuccess={() => handleReviewSuccess(selectedProduct?.productId || selectedProduct?.product?.id)}
+            />
         </div>
     );
 };
 
 /**
- * Order Item Row
+ * Order Item Row - with Review Button
  */
-const OrderItemRow = ({ item }) => {
+const OrderItemRow = ({ item, canReview, isReviewed, onReview }) => {
     const productName = item.productName || item.product_name || item.product?.name || 'Sản phẩm';
     const quantity = item.quantity || 1;
     const price = item.price || item.unitPrice || 0;
@@ -305,6 +350,26 @@ const OrderItemRow = ({ item }) => {
             <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-800 truncate">{productName}</p>
                 <p className="text-sm text-gray-500">Số lượng: {quantity}</p>
+
+                {/* Review Button */}
+                {canReview && (
+                    <div className="mt-2">
+                        {isReviewed ? (
+                            <span className="inline-flex items-center gap-1 text-sm text-green-600">
+                                <CheckCircleIcon className="h-4 w-4" />
+                                Đã đánh giá
+                            </span>
+                        ) : (
+                            <button
+                                onClick={onReview}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-sm rounded-full hover:from-yellow-500 hover:to-orange-500 transition-all"
+                            >
+                                <StarIcon className="h-4 w-4" />
+                                Đánh giá
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
             <div className="text-right">
                 <p className="font-semibold text-rose-600">{formatPrice(price * quantity)}</p>

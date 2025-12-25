@@ -11,6 +11,7 @@ import {
     ArrowLeftOnRectangleIcon,
     TicketIcon,
     ArchiveBoxIcon,
+    StarIcon,
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
@@ -51,6 +52,11 @@ const Sidebar = () => {
             title: 'Khách hàng',
             path: '/admin/customers',
             icon: UsersIcon,
+        },
+        {
+            title: 'Đánh giá',
+            path: '/admin/reviews',
+            icon: StarIcon,
         },
         {
             title: 'Thống kê',
