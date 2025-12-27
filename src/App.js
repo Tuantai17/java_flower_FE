@@ -55,6 +55,8 @@ import VoucherEdit from './pages/admin/voucher/VoucherEdit';
 import AdminOrderList from './pages/admin/order/OrderList';
 import AdminOrderDetail from './pages/admin/order/OrderDetail';
 import AdminReviewList from './pages/admin/review/ReviewList';
+import AnalyticsPage from './pages/admin/analytics';
+import SettingsPage from './pages/admin/settings';
 import { StockList } from './pages/admin/stock';
 import { CustomerList } from './pages/admin/customer';
 
@@ -160,6 +162,12 @@ function App() {
 
                   {/* REVIEWS */}
                   <Route path="reviews" element={<AdminReviewList />} />
+
+                  {/* ANALYTICS */}
+                  <Route path="analytics" element={<AnalyticsPage />} />
+
+                  {/* SETTINGS */}
+                  <Route path="settings" element={<SettingsPage />} />
                 </Route>
 
 

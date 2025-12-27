@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     MagnifyingGlassIcon,
     BellIcon,
@@ -9,23 +9,33 @@ import {
     Cog6ToothIcon,
     ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
+import { useAdminAuth } from '../../context/AdminAuthContext';
 
 const Navbar = ({ onMenuToggle }) => {
     const [showDropdown, setShowDropdown] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
+
+    // Lấy thông tin admin từ context
+    const { admin, logout, isAuthenticated } = useAdminAuth();
 
     // Get current page title
     const getPageTitle = () => {
         const paths = {
             '/admin': 'Dashboard',
+            '/admin/dashboard': 'Dashboard',
             '/admin/products': 'Quản lý sản phẩm',
             '/admin/products/create': 'Thêm sản phẩm',
             '/admin/categories': 'Quản lý danh mục',
             '/admin/categories/create': 'Thêm danh mục',
             '/admin/orders': 'Quản lý đơn hàng',
             '/admin/customers': 'Quản lý khách hàng',
+            '/admin/analytics': 'Thống kê',
             '/admin/settings': 'Cài đặt',
+            '/admin/vouchers': 'Quản lý Voucher',
+            '/admin/stock': 'Quản lý Tồn kho',
+            '/admin/reviews': 'Quản lý Đánh giá',
         };
 
         for (const [path, title] of Object.entries(paths)) {
@@ -35,11 +45,40 @@ const Navbar = ({ onMenuToggle }) => {
             if (location.pathname.includes('/edit/')) {
                 if (location.pathname.includes('products')) return 'Chỉnh sửa sản phẩm';
                 if (location.pathname.includes('categories')) return 'Chỉnh sửa danh mục';
+                if (location.pathname.includes('vouchers')) return 'Chỉnh sửa Voucher';
             }
             if (location.pathname === path) return title;
         }
 
         return 'Admin Panel';
+    };
+
+    // Lấy thông tin hiển thị của admin
+    const getAdminDisplayInfo = () => {
+        if (!admin) {
+            return {
+                name: 'Admin',
+                email: 'admin@flowercorner.vn',
+                initials: 'A',
+                avatar: null,
+            };
+        }
+
+        const name = admin.name || admin.fullName || admin.username || 'Admin';
+        const email = admin.email || 'admin@flowercorner.vn';
+        const initials = name.charAt(0).toUpperCase();
+        const avatar = admin.avatar || admin.avatarUrl || admin.profileImage || null;
+
+        return { name, email, initials, avatar };
+    };
+
+    const adminInfo = getAdminDisplayInfo();
+
+    // Xử lý đăng xuất
+    const handleLogout = () => {
+        logout();
+        setShowDropdown(false);
+        navigate('/admin/login');
     };
 
     const notifications = [
@@ -124,22 +163,39 @@ const Navbar = ({ onMenuToggle }) => {
                             onClick={() => setShowDropdown(!showDropdown)}
                             className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
                         >
-                            <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                                A
-                            </div>
-                            <span className="hidden md:block text-sm font-medium text-gray-700">Admin</span>
+                            {/* Avatar */}
+                            {adminInfo.avatar ? (
+                                <img
+                                    src={adminInfo.avatar}
+                                    alt={adminInfo.name}
+                                    className="w-8 h-8 rounded-full object-cover border-2 border-pink-200"
+                                />
+                            ) : (
+                                <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                    {adminInfo.initials}
+                                </div>
+                            )}
+                            <span className="hidden md:block text-sm font-medium text-gray-700">
+                                {adminInfo.name}
+                            </span>
                             <ChevronDownIcon className="hidden md:block h-4 w-4 text-gray-500" />
                         </button>
 
                         {showDropdown && (
                             <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
                                 <div className="px-4 py-3 border-b border-gray-100">
-                                    <p className="text-sm font-medium text-gray-800">Admin User</p>
-                                    <p className="text-xs text-gray-500">admin@flowercorner.vn</p>
+                                    <p className="text-sm font-medium text-gray-800">{adminInfo.name}</p>
+                                    <p className="text-xs text-gray-500">{adminInfo.email}</p>
+                                    {admin?.role && (
+                                        <span className="inline-block mt-1 px-2 py-0.5 bg-pink-100 text-pink-600 text-xs rounded-full">
+                                            {admin.role}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="py-2">
                                     <Link
                                         to="/admin/profile"
+                                        onClick={() => setShowDropdown(false)}
                                         className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
                                     >
                                         <UserCircleIcon className="h-5 w-5" />
@@ -147,6 +203,7 @@ const Navbar = ({ onMenuToggle }) => {
                                     </Link>
                                     <Link
                                         to="/admin/settings"
+                                        onClick={() => setShowDropdown(false)}
                                         className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
                                     >
                                         <Cog6ToothIcon className="h-5 w-5" />
@@ -154,7 +211,10 @@ const Navbar = ({ onMenuToggle }) => {
                                     </Link>
                                 </div>
                                 <div className="py-2 border-t border-gray-100">
-                                    <button className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors">
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors"
+                                    >
                                         <ArrowLeftOnRectangleIcon className="h-5 w-5" />
                                         <span>Đăng xuất</span>
                                     </button>
@@ -169,3 +229,4 @@ const Navbar = ({ onMenuToggle }) => {
 };
 
 export default Navbar;
+
