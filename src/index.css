@@ -66,7 +66,22 @@
   }
 
   .input-search {
-    @apply w-full pl-12 pr-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent bg-gray-50 hover:bg-white transition-all duration-300;
+    @apply w-full pl-12 pr-10 py-3.5 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent bg-white hover:bg-gray-50 transition-all duration-300;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: #374151;
+  }
+
+  .input-search::placeholder {
+    font-size: 15px;
+    font-weight: 400;
+    color: #9ca3af;
+    letter-spacing: 0.02em;
+  }
+
+  .input-search:focus::placeholder {
+    color: #d1d5db;
   }
 
   /* Badge Styles */

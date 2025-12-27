@@ -1,27 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import {
     AdjustmentsHorizontalIcon,
-    XMarkIcon
+    XMarkIcon,
+    ChevronDownIcon,
+    ChevronUpIcon
 } from '@heroicons/react/24/outline';
 import categoryApi from '../../api/categoryApi';
 
+/**
+ * ProductFilter Component
+ * 
+ * Component lọc sản phẩm với các tính năng:
+ * - Lọc theo danh mục (category)
+ * - Lọc theo khoảng giá (price range)
+ * - Sắp xếp (sort)
+ * - Hỗ trợ responsive (mobile modal)
+ */
 const ProductFilter = ({
+    filters = {},
     onFilterChange,
-    initialFilters = {},
     showCategoryFilter = true,
     showPriceFilter = true,
     showSortFilter = true,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [categories, setCategories] = useState([]);
-    const [filters, setFilters] = useState({
-        categoryId: '',
-        minPrice: '',
-        maxPrice: '',
-        sortBy: 'createdAt',
-        sortDir: 'desc',
-        ...initialFilters,
+    const [expandedSections, setExpandedSections] = useState({
+        category: true,
+        price: true,
+        sort: true
     });
+
+    // Lấy giá trị từ props hoặc sử dụng default
+    const currentFilters = {
+        categoryId: filters.categoryId || '',
+        minPrice: filters.minPrice || '',
+        maxPrice: filters.maxPrice || '',
+        sortBy: filters.sortBy || 'newest',
+    };
 
     useEffect(() => {
         if (showCategoryFilter) {
@@ -32,41 +48,67 @@ const ProductFilter = ({
     const fetchCategories = async () => {
         try {
             const data = await categoryApi.getAll();
-            setCategories(data);
+            // Đảm bảo data là array
+            const categoriesArray = Array.isArray(data) ? data : [];
+            setCategories(categoriesArray);
         } catch (error) {
             console.error('Error fetching categories:', error);
+            setCategories([]);
         }
     };
 
+    /**
+     * Xử lý thay đổi filter
+     */
     const handleChange = (key, value) => {
-        const newFilters = { ...filters, [key]: value };
-        setFilters(newFilters);
-        onFilterChange?.(newFilters);
+        onFilterChange?.({ [key]: value });
     };
 
+    /**
+     * Xử lý thay đổi khoảng giá
+     */
+    const handlePriceRangeChange = (minPrice, maxPrice) => {
+        onFilterChange?.({ minPrice, maxPrice });
+    };
+
+    /**
+     * Xóa tất cả filter
+     */
     const clearFilters = () => {
-        const clearedFilters = {
+        onFilterChange?.({
             categoryId: '',
             minPrice: '',
             maxPrice: '',
-            sortBy: 'createdAt',
-            sortDir: 'desc',
-        };
-        setFilters(clearedFilters);
-        onFilterChange?.(clearedFilters);
+            sortBy: 'newest',
+        });
     };
 
-    const hasActiveFilters = filters.categoryId || filters.minPrice || filters.maxPrice;
+    /**
+     * Toggle section expand/collapse
+     */
+    const toggleSection = (section) => {
+        setExpandedSections(prev => ({
+            ...prev,
+            [section]: !prev[section]
+        }));
+    };
 
+    const hasActiveFilters = currentFilters.categoryId ||
+        currentFilters.minPrice ||
+        currentFilters.maxPrice ||
+        currentFilters.sortBy !== 'newest';
+
+    // Các options sắp xếp
     const sortOptions = [
-        { value: 'createdAt-desc', label: 'Mới nhất' },
-        { value: 'createdAt-asc', label: 'Cũ nhất' },
-        { value: 'price-asc', label: 'Giá thấp đến cao' },
-        { value: 'price-desc', label: 'Giá cao đến thấp' },
-        { value: 'name-asc', label: 'Tên A-Z' },
-        { value: 'name-desc', label: 'Tên Z-A' },
+        { value: 'newest', label: 'Mới nhất' },
+        { value: 'oldest', label: 'Cũ nhất' },
+        { value: 'price_asc', label: 'Giá thấp đến cao' },
+        { value: 'price_desc', label: 'Giá cao đến thấp' },
+        { value: 'name_asc', label: 'Tên A-Z' },
+        { value: 'name_desc', label: 'Tên Z-A' },
     ];
 
+    // Các khoảng giá định sẵn
     const priceRanges = [
         { min: 0, max: 500000, label: 'Dưới 500.000đ' },
         { min: 500000, max: 1000000, label: '500.000đ - 1.000.000đ' },
@@ -75,16 +117,192 @@ const ProductFilter = ({
         { min: 5000000, max: null, label: 'Trên 5.000.000đ' },
     ];
 
+    /**
+     * Kiểm tra khoảng giá có đang được chọn không
+     */
+    const isPriceRangeSelected = (range) => {
+        return currentFilters.minPrice === range.min.toString() &&
+            (range.max === null
+                ? currentFilters.maxPrice === ''
+                : currentFilters.maxPrice === range.max.toString());
+    };
+
+    /**
+     * Component Section Header có thể collapse
+     */
+    const SectionHeader = ({ title, section, icon }) => (
+        <button
+            onClick={() => toggleSection(section)}
+            className="w-full flex items-center justify-between py-2 text-left"
+        >
+            <h4 className="font-medium text-gray-800 flex items-center gap-2">
+                {icon}
+                {title}
+            </h4>
+            {expandedSections[section] ? (
+                <ChevronUpIcon className="h-4 w-4 text-gray-500" />
+            ) : (
+                <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+            )}
+        </button>
+    );
+
+    /**
+     * Render nội dung filter
+     */
+    const renderFilterContent = () => (
+        <>
+            {/* Category Filter */}
+            {showCategoryFilter && categories.length > 0 && (
+                <div className="border-b border-gray-100 pb-4 mb-4">
+                    <SectionHeader title="Danh mục" section="category" />
+
+                    {expandedSections.category && (
+                        <div className="space-y-2 mt-3">
+                            {/* All Categories Option */}
+                            <label className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-pink-50 transition-colors">
+                                <input
+                                    type="radio"
+                                    name="category"
+                                    checked={!currentFilters.categoryId}
+                                    onChange={() => handleChange('categoryId', '')}
+                                    className="w-4 h-4 text-pink-500 focus:ring-pink-500 border-gray-300"
+                                />
+                                <span className={`text-sm transition-colors ${!currentFilters.categoryId
+                                        ? 'text-pink-600 font-medium'
+                                        : 'text-gray-600 group-hover:text-pink-600'
+                                    }`}>
+                                    Tất cả
+                                </span>
+                            </label>
+
+                            {/* Category List */}
+                            {categories.map((category) => (
+                                <label
+                                    key={category.id}
+                                    className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-pink-50 transition-colors"
+                                >
+                                    <input
+                                        type="radio"
+                                        name="category"
+                                        checked={currentFilters.categoryId === category.id.toString()}
+                                        onChange={() => handleChange('categoryId', category.id.toString())}
+                                        className="w-4 h-4 text-pink-500 focus:ring-pink-500 border-gray-300"
+                                    />
+                                    <span className={`text-sm transition-colors ${currentFilters.categoryId === category.id.toString()
+                                            ? 'text-pink-600 font-medium'
+                                            : 'text-gray-600 group-hover:text-pink-600'
+                                        }`}>
+                                        {category.name}
+                                    </span>
+                                    {category.productCount !== undefined && (
+                                        <span className="text-xs text-gray-400 ml-auto">
+                                            ({category.productCount})
+                                        </span>
+                                    )}
+                                </label>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Price Filter */}
+            {showPriceFilter && (
+                <div className="border-b border-gray-100 pb-4 mb-4">
+                    <SectionHeader title="Khoảng giá" section="price" />
+
+                    {expandedSections.price && (
+                        <div className="space-y-2 mt-3">
+                            {priceRanges.map((range, index) => (
+                                <label
+                                    key={index}
+                                    className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-pink-50 transition-colors"
+                                >
+                                    <input
+                                        type="radio"
+                                        name="priceRange"
+                                        checked={isPriceRangeSelected(range)}
+                                        onChange={() => handlePriceRangeChange(
+                                            range.min.toString(),
+                                            range.max?.toString() || ''
+                                        )}
+                                        className="w-4 h-4 text-pink-500 focus:ring-pink-500 border-gray-300"
+                                    />
+                                    <span className={`text-sm transition-colors ${isPriceRangeSelected(range)
+                                            ? 'text-pink-600 font-medium'
+                                            : 'text-gray-600 group-hover:text-pink-600'
+                                        }`}>
+                                        {range.label}
+                                    </span>
+                                </label>
+                            ))}
+
+                            {/* Custom Price Range */}
+                            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                                <p className="text-xs text-gray-500 mb-2">Hoặc nhập khoảng giá:</p>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        placeholder="Từ"
+                                        value={currentFilters.minPrice}
+                                        onChange={(e) => handleChange('minPrice', e.target.value)}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                                    />
+                                    <span className="text-gray-400">-</span>
+                                    <input
+                                        type="number"
+                                        placeholder="Đến"
+                                        value={currentFilters.maxPrice}
+                                        onChange={(e) => handleChange('maxPrice', e.target.value)}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Sort Filter */}
+            {showSortFilter && (
+                <div>
+                    <SectionHeader title="Sắp xếp" section="sort" />
+
+                    {expandedSections.sort && (
+                        <div className="mt-3">
+                            <select
+                                value={currentFilters.sortBy}
+                                onChange={(e) => handleChange('sortBy', e.target.value)}
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm bg-white"
+                            >
+                                {sortOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
+            )}
+        </>
+    );
+
     return (
         <>
             {/* Desktop Filter */}
             <div className="hidden lg:block bg-white rounded-2xl shadow-soft p-6 sticky top-24">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-display text-lg font-semibold">Bộ lọc</h3>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                    <h3 className="font-display text-lg font-semibold flex items-center gap-2">
+                        <AdjustmentsHorizontalIcon className="h-5 w-5 text-pink-500" />
+                        Bộ lọc
+                    </h3>
                     {hasActiveFilters && (
                         <button
                             onClick={clearFilters}
-                            className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1"
+                            className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-pink-50 transition-colors"
                         >
                             <XMarkIcon className="h-4 w-4" />
                             Xóa lọc
@@ -92,97 +310,8 @@ const ProductFilter = ({
                     )}
                 </div>
 
-                {/* Category Filter */}
-                {showCategoryFilter && categories.length > 0 && (
-                    <div className="mb-6">
-                        <h4 className="font-medium text-gray-700 mb-3">Danh mục</h4>
-                        <div className="space-y-2">
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                    type="radio"
-                                    name="category"
-                                    checked={!filters.categoryId}
-                                    onChange={() => handleChange('categoryId', '')}
-                                    className="w-4 h-4 text-pink-500 focus:ring-pink-500"
-                                />
-                                <span className="text-gray-600 group-hover:text-pink-600 transition-colors">
-                                    Tất cả
-                                </span>
-                            </label>
-                            {categories.map((category) => (
-                                <label
-                                    key={category.id}
-                                    className="flex items-center gap-2 cursor-pointer group"
-                                >
-                                    <input
-                                        type="radio"
-                                        name="category"
-                                        checked={filters.categoryId === category.id.toString()}
-                                        onChange={() => handleChange('categoryId', category.id.toString())}
-                                        className="w-4 h-4 text-pink-500 focus:ring-pink-500"
-                                    />
-                                    <span className="text-gray-600 group-hover:text-pink-600 transition-colors">
-                                        {category.name}
-                                    </span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Price Filter */}
-                {showPriceFilter && (
-                    <div className="mb-6">
-                        <h4 className="font-medium text-gray-700 mb-3">Khoảng giá</h4>
-                        <div className="space-y-2">
-                            {priceRanges.map((range, index) => (
-                                <label
-                                    key={index}
-                                    className="flex items-center gap-2 cursor-pointer group"
-                                >
-                                    <input
-                                        type="radio"
-                                        name="priceRange"
-                                        checked={
-                                            filters.minPrice === range.min.toString() &&
-                                            filters.maxPrice === (range.max?.toString() || '')
-                                        }
-                                        onChange={() => {
-                                            handleChange('minPrice', range.min.toString());
-                                            handleChange('maxPrice', range.max?.toString() || '');
-                                        }}
-                                        className="w-4 h-4 text-pink-500 focus:ring-pink-500"
-                                    />
-                                    <span className="text-gray-600 group-hover:text-pink-600 transition-colors text-sm">
-                                        {range.label}
-                                    </span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Sort Filter */}
-                {showSortFilter && (
-                    <div>
-                        <h4 className="font-medium text-gray-700 mb-3">Sắp xếp</h4>
-                        <select
-                            value={`${filters.sortBy}-${filters.sortDir}`}
-                            onChange={(e) => {
-                                const [sortBy, sortDir] = e.target.value.split('-');
-                                handleChange('sortBy', sortBy);
-                                handleChange('sortDir', sortDir);
-                            }}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                        >
-                            {sortOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                )}
+                {/* Filter Content */}
+                {renderFilterContent()}
             </div>
 
             {/* Mobile Filter Button */}
@@ -194,115 +323,53 @@ const ProductFilter = ({
                     <AdjustmentsHorizontalIcon className="h-5 w-5 text-gray-600" />
                     <span className="text-gray-700 font-medium">Bộ lọc</span>
                     {hasActiveFilters && (
-                        <span className="w-2 h-2 bg-pink-500 rounded-full" />
+                        <span className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
                     )}
                 </button>
             </div>
 
             {/* Mobile Filter Modal */}
             {isOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 lg:hidden">
-                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[80vh] overflow-auto animate-slide-up">
-                        <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                            <h3 className="font-display text-lg font-semibold">Bộ lọc</h3>
+                <div className="fixed inset-0 bg-black/50 z-50 lg:hidden" onClick={() => setIsOpen(false)}>
+                    <div
+                        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[85vh] overflow-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between z-10">
+                            <h3 className="font-display text-lg font-semibold flex items-center gap-2">
+                                <AdjustmentsHorizontalIcon className="h-5 w-5 text-pink-500" />
+                                Bộ lọc
+                            </h3>
                             <button
                                 onClick={() => setIsOpen(false)}
-                                className="p-2 hover:bg-gray-100 rounded-full"
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                             >
                                 <XMarkIcon className="h-5 w-5" />
                             </button>
                         </div>
 
+                        {/* Filter Content */}
                         <div className="p-6">
-                            {/* Category Filter */}
-                            {showCategoryFilter && categories.length > 0 && (
-                                <div className="mb-6">
-                                    <h4 className="font-medium text-gray-700 mb-3">Danh mục</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        <button
-                                            onClick={() => handleChange('categoryId', '')}
-                                            className={`px-4 py-2 rounded-full text-sm transition-colors ${!filters.categoryId
-                                                ? 'bg-pink-500 text-white'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                }`}
-                                        >
-                                            Tất cả
-                                        </button>
-                                        {categories.map((category) => (
-                                            <button
-                                                key={category.id}
-                                                onClick={() => handleChange('categoryId', category.id.toString())}
-                                                className={`px-4 py-2 rounded-full text-sm transition-colors ${filters.categoryId === category.id.toString()
-                                                    ? 'bg-pink-500 text-white'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                    }`}
-                                            >
-                                                {category.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Price Filter */}
-                            {showPriceFilter && (
-                                <div className="mb-6">
-                                    <h4 className="font-medium text-gray-700 mb-3">Khoảng giá</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {priceRanges.map((range, index) => (
-                                            <button
-                                                key={index}
-                                                onClick={() => {
-                                                    handleChange('minPrice', range.min.toString());
-                                                    handleChange('maxPrice', range.max?.toString() || '');
-                                                }}
-                                                className={`px-4 py-2 rounded-full text-sm transition-colors ${filters.minPrice === range.min.toString()
-                                                    ? 'bg-pink-500 text-white'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                    }`}
-                                            >
-                                                {range.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Sort Filter */}
-                            {showSortFilter && (
-                                <div className="mb-6">
-                                    <h4 className="font-medium text-gray-700 mb-3">Sắp xếp</h4>
-                                    <select
-                                        value={`${filters.sortBy}-${filters.sortDir}`}
-                                        onChange={(e) => {
-                                            const [sortBy, sortDir] = e.target.value.split('-');
-                                            handleChange('sortBy', sortBy);
-                                            handleChange('sortDir', sortDir);
-                                        }}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500"
-                                    >
-                                        {sortOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
+                            {renderFilterContent()}
                         </div>
 
+                        {/* Footer Buttons */}
                         <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-100 flex gap-3">
                             <button
-                                onClick={clearFilters}
+                                onClick={() => {
+                                    clearFilters();
+                                    setIsOpen(false);
+                                }}
                                 className="flex-1 py-3 border border-gray-300 rounded-full text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                             >
                                 Xóa lọc
                             </button>
                             <button
                                 onClick={() => setIsOpen(false)}
-                                className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-full font-medium shadow-lg"
+                                className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-full font-medium shadow-lg hover:shadow-xl transition-shadow"
                             >
-                                Áp dụng
+                                Áp dụng ({hasActiveFilters ? '✓' : '0'})
                             </button>
                         </div>
                     </div>

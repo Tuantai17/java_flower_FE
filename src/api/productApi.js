@@ -115,12 +115,149 @@ const productApi = {
         return unwrapResponse(response);
     },
 
-    // Search products
+    // Search products (basic)
     search: async (keyword, page = 0, size = 12) => {
         const response = await axiosInstance.get('/products/search', {
             params: { keyword, page, size }
         });
         return unwrapResponse(response);
+    },
+
+    /**
+     * Tìm kiếm và lọc nâng cao kết hợp
+     * @param {Object} params - Các tham số tìm kiếm và lọc
+     * @param {string} params.keyword - Từ khóa tìm kiếm
+     * @param {number} params.priceFrom - Giá tối thiểu
+     * @param {number} params.priceTo - Giá tối đa
+     * @param {number} params.categoryId - ID danh mục
+     * @param {string} params.sortBy - Sắp xếp theo (newest, price_asc, price_desc, name_asc, name_desc)
+     * @param {number} params.page - Trang hiện tại
+     * @param {number} params.size - Số sản phẩm mỗi trang
+     */
+    searchProducts: async (params = {}) => {
+        const {
+            keyword = '',
+            priceFrom = '',
+            priceTo = '',
+            categoryId = '',
+            sortBy = 'newest',
+            page = 0,
+            size = 12
+        } = params;
+
+        try {
+            // Cố gắng gọi API search từ backend nếu có
+            const response = await axiosInstance.get('/products/search', {
+                params: {
+                    keyword: keyword || undefined,
+                    priceFrom: priceFrom || undefined,
+                    priceTo: priceTo || undefined,
+                    categoryId: categoryId || undefined,
+                    sortBy: sortBy || undefined,
+                    page,
+                    size
+                }
+            });
+
+            const data = unwrapResponse(response);
+
+            // Nếu data đã có format pagination từ backend
+            if (data && data.content) {
+                return data;
+            }
+
+            // Nếu data là array, tự tạo pagination
+            const productsArray = Array.isArray(data) ? data : [];
+            return {
+                content: productsArray.slice(page * size, (page + 1) * size),
+                totalElements: productsArray.length,
+                totalPages: Math.ceil(productsArray.length / size),
+                number: page,
+                size: size
+            };
+        } catch (error) {
+            console.log('Backend search endpoint not available, performing client-side filtering');
+
+            // Fallback: lấy tất cả sản phẩm và lọc ở client
+            let allProducts = [];
+
+            try {
+                const response = await axiosInstance.get('/admin/products');
+                allProducts = unwrapResponse(response);
+            } catch (adminError) {
+                const response = await axiosInstance.get('/products');
+                allProducts = unwrapResponse(response);
+            }
+
+            // Đảm bảo là array
+            allProducts = Array.isArray(allProducts) ? allProducts : [];
+
+            // Lọc theo từ khóa
+            if (keyword) {
+                const lowerKeyword = keyword.toLowerCase();
+                allProducts = allProducts.filter(p =>
+                    p.name?.toLowerCase().includes(lowerKeyword) ||
+                    p.description?.toLowerCase().includes(lowerKeyword)
+                );
+            }
+
+            // Lọc theo danh mục
+            if (categoryId) {
+                allProducts = allProducts.filter(p =>
+                    p.categoryId?.toString() === categoryId.toString() ||
+                    p.category?.id?.toString() === categoryId.toString()
+                );
+            }
+
+            // Lọc theo khoảng giá
+            if (priceFrom) {
+                allProducts = allProducts.filter(p => {
+                    const productPrice = p.salePrice || p.price;
+                    return productPrice >= Number(priceFrom);
+                });
+            }
+
+            if (priceTo) {
+                allProducts = allProducts.filter(p => {
+                    const productPrice = p.salePrice || p.price;
+                    return productPrice <= Number(priceTo);
+                });
+            }
+
+            // Sắp xếp
+            switch (sortBy) {
+                case 'price_asc':
+                    allProducts.sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price));
+                    break;
+                case 'price_desc':
+                    allProducts.sort((a, b) => (b.salePrice || b.price) - (a.salePrice || a.price));
+                    break;
+                case 'name_asc':
+                    allProducts.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                    break;
+                case 'name_desc':
+                    allProducts.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+                    break;
+                case 'newest':
+                default:
+                    allProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    break;
+            }
+
+            // Phân trang
+            const startIndex = page * size;
+            const paginatedProducts = allProducts.slice(startIndex, startIndex + size);
+
+            return {
+                content: paginatedProducts,
+                totalElements: allProducts.length,
+                totalPages: Math.ceil(allProducts.length / size),
+                number: page,
+                size: size,
+                first: page === 0,
+                last: startIndex + size >= allProducts.length
+            };
+        }
     },
 
     // Get featured products (using latest as alternative)

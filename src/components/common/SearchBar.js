@@ -133,21 +133,21 @@ const SearchBar = ({
                     {/* Suggestions */}
                     {!isLoading && suggestions.length > 0 && (
                         <div className="py-2">
-                            <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">Gợi ý</p>
+                            <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Gợi ý</p>
                             {suggestions.map((product) => (
                                 <button
                                     key={product.id}
                                     onClick={() => navigate(`/product/${product.id}`)}
-                                    className="w-full flex items-center gap-3 px-4 py-2 hover:bg-pink-50 transition-colors text-left"
+                                    className="w-full flex items-center gap-4 px-4 py-3 hover:bg-pink-50 transition-colors text-left"
                                 >
                                     <img
                                         src={product.thumbnail || '/assets/images/placeholder.jpg'}
                                         alt={product.name}
-                                        className="w-10 h-10 rounded-lg object-cover"
+                                        className="w-12 h-12 rounded-lg object-cover shadow-sm"
                                     />
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-700 truncate">{product.name}</p>
-                                        <p className="text-xs text-pink-600">
+                                        <p className="text-base font-medium text-gray-800 truncate">{product.name}</p>
+                                        <p className="text-sm font-semibold text-pink-600">
                                             {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.salePrice || product.price)}
                                         </p>
                                     </div>

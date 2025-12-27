@@ -32,7 +32,7 @@ import VoucherPage from './pages/user/VoucherPage';
 import MyOrdersPage from './pages/user/MyOrdersPage';
 import OrderDetailPage from './pages/user/OrderDetailPage';
 import PaymentResultPage from './pages/user/PaymentResultPage';
-import ChristmasPage from './pages/user/ChristmasPage';
+
 
 // AUTH Pages (User)
 import LoginPage from "./pages/user/LoginPage";
@@ -104,8 +104,7 @@ function App() {
                   <Route path="payment/failure" element={<PaymentResultPage />} />
                   <Route path="payment/momo/return" element={<PaymentResultPage />} />
 
-                  {/* CHRISTMAS PAGE - Me Ry Chit Mot */}
-                  <Route path="christmas" element={<ChristmasPage />} />
+
 
                   {/* AUTH USER */}
                   <Route path="login" element={<LoginPage />} />
