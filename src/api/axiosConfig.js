@@ -15,12 +15,32 @@ const TOKEN_KEYS = {
     ADMIN: 'adminToken',
 };
 
-// Hàm lấy token phù hợp dựa vào URL
+// Các routes yêu cầu admin token (ngoài /admin/*)
+const ADMIN_REQUIRED_ROUTES = [
+    '/upload/product',   // Upload ảnh sản phẩm
+    '/upload/products',  // Upload nhiều ảnh sản phẩm
+    '/upload/category',  // Upload ảnh danh mục
+];
+
+/**
+ * Hàm lấy token phù hợp dựa vào URL
+ * - Admin routes (/admin/*) và upload routes: Sử dụng adminToken
+ * - User routes: Sử dụng userToken
+ */
 const getTokenForRequest = (url) => {
-    // Nếu là admin route, ưu tiên adminToken
-    if (url && url.includes('/admin')) {
+    // Kiểm tra xem URL có yêu cầu admin token không
+    const requiresAdminToken =
+        (url && url.includes('/admin')) ||
+        ADMIN_REQUIRED_ROUTES.some(route => url?.includes(route));
+
+    if (requiresAdminToken) {
         const adminToken = localStorage.getItem(TOKEN_KEYS.ADMIN);
-        if (adminToken) return adminToken;
+        if (adminToken) {
+            if (process.env.NODE_ENV === 'development') {
+                console.log('🔐 Using adminToken for:', url);
+            }
+            return adminToken;
+        }
     }
 
     // Fallback: userToken hoặc token (tương thích ngược)
