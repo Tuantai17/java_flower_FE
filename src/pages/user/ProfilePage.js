@@ -373,7 +373,7 @@ const ProfilePage = () => {
                 {/* Quick Links */}
                 <div className="mt-6 bg-white rounded-2xl shadow-lg p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Liên kết nhanh</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <Link
                             to="/profile/orders"
                             className="flex flex-col items-center p-4 bg-rose-50 rounded-xl hover:bg-rose-100 transition-colors"
@@ -387,6 +387,13 @@ const ProfilePage = () => {
                         >
                             <span className="text-2xl mb-2">❤️</span>
                             <span className="text-sm font-medium text-gray-700">Yêu thích</span>
+                        </Link>
+                        <Link
+                            to="/my-vouchers"
+                            className="flex flex-col items-center p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors"
+                        >
+                            <span className="text-2xl mb-2">🎟️</span>
+                            <span className="text-sm font-medium text-gray-700">Kho Voucher</span>
                         </Link>
                         <Link
                             to="/cart"

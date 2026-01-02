@@ -123,7 +123,7 @@ const RecentOrdersCard = ({ orders, loading = false }) => {
                                         </span>
                                     </div>
                                     <p className="text-sm text-gray-500 truncate">
-                                        {order.customerName || 'Khách hàng'}
+                                        {order.senderName || order.customerName || 'Khách hàng'}
                                     </p>
                                 </div>
 

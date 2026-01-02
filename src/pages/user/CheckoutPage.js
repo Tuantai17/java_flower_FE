@@ -1,11 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useApp } from '../../context/AppContext';
-import { useAuth } from '../../context/AuthContext';
+/**
+ * ========================================
+ * CheckoutPage - Trang Thanh Toán
+ * ========================================
+ * 
+ * Triển khai theo README_FRONTEND.md (Checkout API)
+ * 
+ * Flow:
+ * 1. User điền thông tin người gửi & người nhận
+ * 2. User chọn địa chỉ giao hàng
+ * 3. User chọn lịch giao hàng
+ * 4. User chọn phương thức thanh toán
+ * 5. Click "Đặt hàng":
+ *    a. Validate form
+ *    b. Sync giỏ hàng lên server
+ *    c. Gọi API POST /orders/checkout
+ * 6. COD: Hiển thị trang thành công
+ * 7. MOMO/VNPAY: Redirect đến trang thanh toán
+ */
+
+import React, { memo } from 'react';
+import { Link } from 'react-router-dom';
+import useCheckout from '../../hooks/useCheckout';
 import { formatPrice } from '../../utils/formatPrice';
 import { getImageUrl } from '../../utils/imageUrl';
-import orderApi, { PAYMENT_METHODS, MOMO_TYPES } from '../../api/orderApi';
-import cartApi from '../../api/cartApi';
+import { PAYMENT_METHODS } from '../../api/orderApi';
+
+// Icons
 import {
     ShoppingBagIcon,
     MapPinIcon,
@@ -13,334 +33,104 @@ import {
     PhoneIcon,
     EnvelopeIcon,
     CreditCardIcon,
-    TruckIcon,
     CheckCircleIcon,
     ArrowLeftIcon,
     ShieldCheckIcon,
     ExclamationTriangleIcon,
+    CalendarIcon,
+    ClockIcon,
+    GiftIcon,
 } from '@heroicons/react/24/outline';
 
-/**
- * Checkout Page - Trang thanh toán
- * 
- * Flow:
- * 1. User điền thông tin giao hàng
- * 2. Chọn phương thức thanh toán
- * 3. Click "Đặt hàng":
- *    a. Sync giỏ hàng lên server (POST /cart/add)
- *    b. Gọi API POST /orders/checkout
- * 4. COD: Hiển thị trang thành công
- * 5. MOMO/VNPAY: Redirect đến trang thanh toán
- */
+// ========================================
+// MAIN COMPONENT
+// ========================================
+
 const CheckoutPage = () => {
-    const navigate = useNavigate();
+    // Sử dụng custom hook quản lý checkout
+    const checkout = useCheckout();
 
-    // Cart data từ AppContext
-    const { state, cartTotal, cartCount, clearCart } = useApp();
-    const { cart } = state;
-
-    // Auth từ AuthContext (tách riêng cho chính xác)
-    const { user, isAuthenticated } = useAuth();
-
-    // Form state
-    const [formData, setFormData] = useState({
-        customerName: '',
-        customerPhone: '',
-        customerEmail: '',
-        shippingAddress: '',
-        note: '',
-        paymentMethod: PAYMENT_METHODS.COD,
-    });
-
-    // MoMo sub-type state (QR hoặc CARD)
-    const [momoType, setMomoType] = useState(MOMO_TYPES.QR);
-
-    const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(false);
-    const [loadingText, setLoadingText] = useState('');
-    const [orderSuccess, setOrderSuccess] = useState(false);
-    const [orderData, setOrderData] = useState(null);
-    const [apiError, setApiError] = useState('');
-
-    // Load voucher from session storage
-    const [appliedVoucher, setAppliedVoucher] = useState(null);
-
-    useEffect(() => {
-        // Load voucher if any
-        const savedVoucher = sessionStorage.getItem('appliedVoucher');
-        if (savedVoucher) {
-            try {
-                setAppliedVoucher(JSON.parse(savedVoucher));
-            } catch (e) {
-                console.error('Error parsing voucher:', e);
-            }
-        }
-
-        // Pre-fill user info if logged in
-        if (isAuthenticated && user) {
-            setFormData(prev => ({
-                ...prev,
-                customerName: user.fullName || user.username || '',
-                customerPhone: user.phone || user.phoneNumber || '',
-                customerEmail: user.email || '',
-                shippingAddress: user.address || '',
-            }));
-        }
-    }, [isAuthenticated, user]);
-
-    // Redirect if cart is empty
-    useEffect(() => {
-        if (cart.length === 0 && !orderSuccess) {
-            navigate('/cart');
-        }
-    }, [cart, navigate, orderSuccess]);
-
-    // Calculate totals
-    const shippingFee = 0; // Miễn phí ship
-    const discountAmount = appliedVoucher?.discountAmount || 0;
-    const finalTotal = cartTotal - discountAmount + shippingFee;
-
-    // Handle form change
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        setApiError('');
-
-        // Clear error when user types
-        if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: '' }));
-        }
-    };
-
-    // Validate form
-    const validateForm = () => {
-        const newErrors = {};
-
-        if (!formData.customerName.trim()) {
-            newErrors.customerName = 'Vui lòng nhập họ tên';
-        }
-
-        if (!formData.customerPhone.trim()) {
-            newErrors.customerPhone = 'Vui lòng nhập số điện thoại';
-        } else if (!/^(0|\+84)[0-9]{9,10}$/.test(formData.customerPhone.replace(/\s/g, ''))) {
-            newErrors.customerPhone = 'Số điện thoại không hợp lệ';
-        }
-
-        if (!formData.customerEmail.trim()) {
-            newErrors.customerEmail = 'Vui lòng nhập email';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customerEmail)) {
-            newErrors.customerEmail = 'Email không hợp lệ';
-        }
-
-        if (!formData.shippingAddress.trim()) {
-            newErrors.shippingAddress = 'Vui lòng nhập địa chỉ';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    // Handle submit order
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setApiError('');
-
-        if (!validateForm()) {
-            return;
-        }
-
-        // Check authentication - yêu cầu đăng nhập để checkout
-        if (!isAuthenticated) {
-            setApiError('Vui lòng đăng nhập để tiến hành đặt hàng');
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            // Step 1: Sync giỏ hàng với backend
-            setLoadingText('Đang đồng bộ giỏ hàng...');
-            console.log('🔄 Step 1: Syncing cart to server...');
-
-            try {
-                await cartApi.ensureCartSynced(cart);
-                console.log('✅ Cart synced successfully');
-            } catch (syncError) {
-                console.error('❌ Cart sync error:', syncError);
-                // Không throw lỗi, tiếp tục checkout vì có thể backend đã có cart
-            }
-
-            // Step 2: Prepare checkout data
-            setLoadingText('Đang tạo đơn hàng...');
-            console.log('🔄 Step 2: Creating order...');
-
-            const checkoutData = {
-                // Thông tin khách hàng
-                customerName: formData.customerName.trim(),
-                customerPhone: formData.customerPhone.trim(),
-                customerEmail: formData.customerEmail.trim(),
-                shippingAddress: formData.shippingAddress.trim(),
-
-                // Thông tin thanh toán
-                paymentMethod: formData.paymentMethod,
-
-                // MoMo type (chỉ khi chọn MOMO)
-                ...(formData.paymentMethod === PAYMENT_METHODS.MOMO && {
-                    momoType: momoType,
-                    requestType: momoType, // Backend có thể cần field này
-                }),
-
-                // Voucher (nếu có)
-                voucherCode: appliedVoucher?.code || null,
-
-                // Ghi chú
-                note: formData.note.trim() || null,
-            };
-
-            console.log('📤 Submitting checkout:', checkoutData);
-            console.log('📍 Payment Method selected:', formData.paymentMethod);
-
-            const result = await orderApi.checkout(checkoutData);
-
-            console.log('✅ Checkout response:', result);
-
-            // ========================================
-            // XỬ LÝ PAYMENT URL (MoMo/VNPay)
-            // ========================================
-            // orderApi.checkout đã xử lý và trả về paymentUrl ở top level
-            const paymentUrl = result?.paymentUrl;
-
-            console.log('📍 Payment Method:', formData.paymentMethod);
-            console.log('📍 Payment URL:', paymentUrl);
-
-            // Redirect nếu có paymentUrl (MOMO, VNPAY)
-            if (paymentUrl && formData.paymentMethod !== PAYMENT_METHODS.COD) {
-                console.log('🔄 Redirecting to payment gateway...');
-                setLoadingText('Đang chuyển đến trang thanh toán...');
-
-                // Validate URL
-                try {
-                    new URL(paymentUrl);
-
-                    // Delay nhỏ để user thấy loading message
-                    setTimeout(() => {
-                        window.location.href = paymentUrl;
-                    }, 500);
-                    return;
-
-                } catch (urlError) {
-                    console.error('❌ Invalid payment URL:', paymentUrl);
-                    setApiError('URL thanh toán không hợp lệ. Vui lòng liên hệ CSKH.');
-                    setLoading(false);
-                    return;
-                }
-            }
-
-            // Cảnh báo nếu chọn MOMO/VNPAY nhưng không có paymentUrl
-            if (formData.paymentMethod !== PAYMENT_METHODS.COD && !paymentUrl) {
-                console.warn('⚠️ No paymentUrl for', formData.paymentMethod);
-                setApiError(
-                    'Đơn hàng đã được tạo nhưng không thể kết nối cổng thanh toán. ' +
-                    'Vui lòng kiểm tra "Đơn hàng của tôi" hoặc liên hệ CSKH.'
-                );
-            }
-
-            // ========================================
-            // COD hoặc FALLBACK - Hiển thị trang thành công
-            // ========================================
-            console.log('✅ Order created successfully');
-            clearCart();
-            sessionStorage.removeItem('appliedVoucher');
-            setOrderData(result);
-            setOrderSuccess(true);
-
-        } catch (error) {
-            console.error('❌ Checkout error:', error.response?.data || error.message);
-
-            const errorMessage = error.response?.data?.message
-                || error.response?.data?.error
-                || error.message
-                || 'Đặt hàng thất bại. Vui lòng thử lại.';
-
-            setApiError(errorMessage);
-        } finally {
-            setLoading(false);
-            setLoadingText('');
-        }
-    };
-
-    // Success state
-    if (orderSuccess) {
-        return <OrderSuccessScreen orderData={orderData} />;
+    // Hiển thị trang thành công
+    if (checkout.orderSuccess) {
+        return <OrderSuccessScreen orderData={checkout.orderData} />;
     }
 
     return (
         <div className="py-8 px-4 bg-gray-50 min-h-screen">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
-                <div className="mb-8">
-                    <Link
-                        to="/cart"
-                        className="inline-flex items-center gap-2 text-gray-600 hover:text-rose-500 transition-colors mb-4"
-                    >
-                        <ArrowLeftIcon className="h-5 w-5" />
-                        Quay lại giỏ hàng
-                    </Link>
-                    <h1 className="text-3xl font-bold text-gray-800">Thanh toán</h1>
-                    <p className="text-gray-500 mt-1">
-                        Hoàn tất thông tin để đặt hàng
-                    </p>
-                </div>
+                <CheckoutHeader />
 
                 {/* API Error */}
-                {apiError && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-                        <ExclamationTriangleIcon className="h-6 w-6 text-red-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                            <p className="font-medium text-red-800">Lỗi đặt hàng</p>
-                            <p className="text-red-600 text-sm mt-1">{apiError}</p>
-                        </div>
-                    </div>
+                {checkout.apiError && (
+                    <ErrorAlert message={checkout.apiError} />
                 )}
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={checkout.handleSubmit}>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Left Column - Forms */}
                         <div className="lg:col-span-2 space-y-6">
-                            {/* Shipping Information */}
-                            <ShippingInfoSection
-                                formData={formData}
-                                errors={errors}
-                                onChange={handleChange}
+                            {/* Sender Information */}
+                            <SenderInfoSection
+                                formData={checkout.formData}
+                                errors={checkout.errors}
+                                onChange={checkout.handleChange}
+                            />
+
+                            {/* Recipient Information */}
+                            <RecipientInfoSection
+                                formData={checkout.formData}
+                                errors={checkout.errors}
+                                onChange={checkout.handleChange}
+                                onCopyFromSender={() => checkout.setFormFields({
+                                    recipientName: checkout.formData.senderName,
+                                    recipientPhone: checkout.formData.senderPhone,
+                                    sameAsSender: true,
+                                })}
+                            />
+
+                            {/* Shipping Address */}
+                            <ShippingAddressSection
+                                formData={checkout.formData}
+                                errors={checkout.errors}
+                                onChange={checkout.handleChange}
+                                provinces={checkout.provinces}
+                                districts={checkout.availableDistricts}
+                            />
+
+                            {/* Delivery Schedule */}
+                            <DeliveryScheduleSection
+                                formData={checkout.formData}
+                                errors={checkout.errors}
+                                onChange={checkout.handleChange}
+                                timeSlots={checkout.deliveryTimeSlots}
                             />
 
                             {/* Payment Method */}
                             <PaymentMethodSection
-                                selectedMethod={formData.paymentMethod}
-                                onChange={(method) => setFormData(prev => ({ ...prev, paymentMethod: method }))}
-                                momoType={momoType}
-                                onMomoTypeChange={setMomoType}
+                                selectedMethod={checkout.formData.paymentMethod}
+                                onChange={(method) => checkout.setFormFields({ paymentMethod: method })}
                             />
 
-                            {/* Order Note */}
+                            {/* Note */}
                             <NoteSection
-                                note={formData.note}
-                                onChange={handleChange}
+                                note={checkout.formData.note}
+                                onChange={checkout.handleChange}
                             />
                         </div>
 
                         {/* Right Column - Order Summary */}
                         <div className="lg:col-span-1">
                             <OrderSummary
-                                cart={cart}
-                                cartTotal={cartTotal}
-                                cartCount={cartCount}
-                                discountAmount={discountAmount}
-                                shippingFee={shippingFee}
-                                finalTotal={finalTotal}
-                                appliedVoucher={appliedVoucher}
-                                loading={loading}
-                                loadingText={loadingText}
+                                cart={checkout.cart}
+                                cartTotal={checkout.cartTotal}
+                                cartCount={checkout.cartCount}
+                                discountAmount={checkout.discountAmount}
+                                shippingFee={checkout.shippingFee}
+                                finalTotal={checkout.finalTotal}
+                                appliedVoucher={checkout.appliedVoucher}
+                                loading={checkout.loading}
+                                loadingText={checkout.loadingText}
                             />
                         </div>
                     </div>
@@ -350,109 +140,299 @@ const CheckoutPage = () => {
     );
 };
 
-/**
- * Shipping Information Section
- */
-const ShippingInfoSection = ({ formData, errors, onChange }) => {
+// ========================================
+// HEADER COMPONENT
+// ========================================
+
+const CheckoutHeader = memo(() => (
+    <div className="mb-8">
+        <Link
+            to="/cart"
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-rose-500 transition-colors mb-4"
+        >
+            <ArrowLeftIcon className="h-5 w-5" />
+            Quay lại giỏ hàng
+        </Link>
+        <h1 className="text-3xl font-bold text-gray-800">Thanh toán</h1>
+        <p className="text-gray-500 mt-1">
+            Hoàn tất thông tin để đặt hàng
+        </p>
+    </div>
+));
+
+// ========================================
+// ERROR ALERT
+// ========================================
+
+const ErrorAlert = memo(({ message }) => (
+    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+        <ExclamationTriangleIcon className="h-6 w-6 text-red-500 flex-shrink-0 mt-0.5" />
+        <div>
+            <p className="font-medium text-red-800">Lỗi đặt hàng</p>
+            <p className="text-red-600 text-sm mt-1">{message}</p>
+        </div>
+    </div>
+));
+
+// ========================================
+// SENDER INFORMATION SECTION
+// ========================================
+
+const SenderInfoSection = memo(({ formData, errors, onChange }) => (
+    <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
+                <UserIcon className="h-5 w-5 text-rose-500" />
+            </div>
+            <div>
+                <h2 className="text-xl font-semibold text-gray-800">Thông tin người gửi</h2>
+                <p className="text-sm text-gray-500">Thông tin của bạn để shop liên hệ</p>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Sender Name */}
+            <FormInput
+                label="Họ và tên"
+                name="senderName"
+                value={formData.senderName}
+                onChange={onChange}
+                error={errors.senderName}
+                placeholder="Nguyễn Văn A"
+                icon={<UserIcon className="h-5 w-5" />}
+                required
+            />
+
+            {/* Sender Phone */}
+            <FormInput
+                label="Số điện thoại"
+                name="senderPhone"
+                type="tel"
+                value={formData.senderPhone}
+                onChange={onChange}
+                error={errors.senderPhone}
+                placeholder="0912 345 678"
+                icon={<PhoneIcon className="h-5 w-5" />}
+                required
+            />
+
+            {/* Sender Email */}
+            <div className="md:col-span-2">
+                <FormInput
+                    label="Email"
+                    name="senderEmail"
+                    type="email"
+                    value={formData.senderEmail}
+                    onChange={onChange}
+                    error={errors.senderEmail}
+                    placeholder="email@example.com"
+                    icon={<EnvelopeIcon className="h-5 w-5" />}
+                    hint="Email để nhận thông báo đơn hàng (không bắt buộc)"
+                />
+            </div>
+        </div>
+    </div>
+));
+
+// ========================================
+// RECIPIENT INFORMATION SECTION
+// ========================================
+
+const RecipientInfoSection = memo(({ formData, errors, onChange, onCopyFromSender }) => (
+    <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                    <GiftIcon className="h-5 w-5 text-pink-500" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-semibold text-gray-800">Thông tin người nhận</h2>
+                    <p className="text-sm text-gray-500">Người sẽ nhận hoa từ bạn</p>
+                </div>
+            </div>
+
+            {/* Copy from sender button */}
+            <button
+                type="button"
+                onClick={onCopyFromSender}
+                className="text-sm text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1"
+            >
+                <CheckCircleIcon className="h-4 w-4" />
+                Giống người gửi
+            </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Recipient Name */}
+            <FormInput
+                label="Họ và tên người nhận"
+                name="recipientName"
+                value={formData.recipientName}
+                onChange={onChange}
+                error={errors.recipientName}
+                placeholder="Trần Thị B"
+                icon={<UserIcon className="h-5 w-5" />}
+                required
+            />
+
+            {/* Recipient Phone */}
+            <FormInput
+                label="Số điện thoại người nhận"
+                name="recipientPhone"
+                type="tel"
+                value={formData.recipientPhone}
+                onChange={onChange}
+                error={errors.recipientPhone}
+                placeholder="0987 654 321"
+                icon={<PhoneIcon className="h-5 w-5" />}
+                required
+            />
+        </div>
+    </div>
+));
+
+// ========================================
+// SHIPPING ADDRESS SECTION
+// ========================================
+
+const ShippingAddressSection = memo(({ formData, errors, onChange, provinces, districts }) => (
+    <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <MapPinIcon className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+                <h2 className="text-xl font-semibold text-gray-800">Địa chỉ giao hàng</h2>
+                <p className="text-sm text-gray-500">Nơi giao hoa đến cho người nhận</p>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Province */}
+            <FormSelect
+                label="Tỉnh / Thành phố"
+                name="province"
+                value={formData.province}
+                onChange={onChange}
+                error={errors.province}
+                options={provinces}
+                optionLabel="name"
+                optionValue="name"
+                placeholder="Chọn Tỉnh/Thành phố"
+                required
+            />
+
+            {/* District */}
+            <FormSelect
+                label="Quận / Huyện"
+                name="district"
+                value={formData.district}
+                onChange={onChange}
+                error={errors.district}
+                options={districts}
+                optionLabel="name"
+                optionValue="name"
+                placeholder="Chọn Quận/Huyện"
+                disabled={!formData.province}
+                required
+            />
+
+            {/* Address Detail */}
+            <div className="md:col-span-2">
+                <FormTextarea
+                    label="Địa chỉ chi tiết"
+                    name="addressDetail"
+                    value={formData.addressDetail}
+                    onChange={onChange}
+                    error={errors.addressDetail}
+                    placeholder="Số nhà, tên đường, tòa nhà, số phòng..."
+                    icon={<MapPinIcon className="h-5 w-5" />}
+                    rows={2}
+                    required
+                />
+            </div>
+        </div>
+    </div>
+));
+
+// ========================================
+// DELIVERY SCHEDULE SECTION
+// ========================================
+
+const DeliveryScheduleSection = memo(({ formData, errors, onChange, timeSlots }) => {
+    // Get min date (today)
+    const today = new Date().toISOString().split('T')[0];
+
     return (
         <div className="bg-white rounded-2xl shadow-sm p-6">
             <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
-                    <TruckIcon className="h-5 w-5 text-rose-500" />
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <CalendarIcon className="h-5 w-5 text-green-500" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-800">Thông tin giao hàng</h2>
+                <div>
+                    <h2 className="text-xl font-semibold text-gray-800">Lịch giao hàng</h2>
+                    <p className="text-sm text-gray-500">Chọn thời gian bạn muốn giao hoa</p>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Full Name */}
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Họ và tên <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                        <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <input
-                            type="text"
-                            name="customerName"
-                            value={formData.customerName}
-                            onChange={onChange}
-                            placeholder="Nguyễn Văn A"
-                            className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors ${errors.customerName ? 'border-red-500' : 'border-gray-200'
-                                }`}
-                        />
-                    </div>
-                    {errors.customerName && <p className="text-red-500 text-sm mt-1">{errors.customerName}</p>}
-                </div>
-
-                {/* Phone */}
+                {/* Delivery Date */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Số điện thoại <span className="text-red-500">*</span>
+                        Ngày giao hàng <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                        <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <input
-                            type="tel"
-                            name="customerPhone"
-                            value={formData.customerPhone}
+                            type="date"
+                            name="deliveryDate"
+                            value={formData.deliveryDate}
                             onChange={onChange}
-                            placeholder="0912 345 678"
-                            className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors ${errors.customerPhone ? 'border-red-500' : 'border-gray-200'
+                            min={today}
+                            className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors ${errors.deliveryDate ? 'border-red-500' : 'border-gray-200'
                                 }`}
                         />
                     </div>
-                    {errors.customerPhone && <p className="text-red-500 text-sm mt-1">{errors.customerPhone}</p>}
+                    {errors.deliveryDate && (
+                        <p className="text-red-500 text-sm mt-1">{errors.deliveryDate}</p>
+                    )}
                 </div>
 
-                {/* Email */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                        <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <input
-                            type="email"
-                            name="customerEmail"
-                            value={formData.customerEmail}
-                            onChange={onChange}
-                            placeholder="email@example.com"
-                            className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors ${errors.customerEmail ? 'border-red-500' : 'border-gray-200'
-                                }`}
-                        />
-                    </div>
-                    {errors.customerEmail && <p className="text-red-500 text-sm mt-1">{errors.customerEmail}</p>}
-                </div>
+                {/* Delivery Time */}
+                <FormSelect
+                    label="Khung giờ giao"
+                    name="deliveryTime"
+                    value={formData.deliveryTime}
+                    onChange={onChange}
+                    error={errors.deliveryTime}
+                    options={timeSlots}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Chọn khung giờ"
+                    icon={<ClockIcon className="h-5 w-5" />}
+                    required
+                />
+            </div>
 
-                {/* Address */}
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Địa chỉ giao hàng <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                        <MapPinIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                        <textarea
-                            name="shippingAddress"
-                            value={formData.shippingAddress}
-                            onChange={onChange}
-                            placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố"
-                            rows={3}
-                            className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors resize-none ${errors.shippingAddress ? 'border-red-500' : 'border-gray-200'
-                                }`}
-                        />
-                    </div>
-                    {errors.shippingAddress && <p className="text-red-500 text-sm mt-1">{errors.shippingAddress}</p>}
-                </div>
+            {/* Delivery Tips */}
+            <div className="mt-4 p-3 bg-green-50 rounded-xl">
+                <p className="text-sm text-green-700 flex items-start gap-2">
+                    <span className="text-lg">💡</span>
+                    <span>
+                        Đơn hàng đặt trước 14:00 có thể giao trong ngày. 
+                        Các ngày lễ/Tết có thể cần đặt trước 2-3 ngày.
+                    </span>
+                </p>
             </div>
         </div>
     );
-};
+});
 
-/**
- * Payment Method Section
- * Bao gồm các phương thức thanh toán và lựa chọn con cho MoMo
- */
-const PaymentMethodSection = ({ selectedMethod, onChange, momoType, onMomoTypeChange }) => {
+// ========================================
+// PAYMENT METHOD SECTION
+// ========================================
+
+const PaymentMethodSection = memo(({ selectedMethod, onChange }) => {
     const paymentMethods = [
         {
             id: PAYMENT_METHODS.COD,
@@ -467,165 +447,109 @@ const PaymentMethodSection = ({ selectedMethod, onChange, momoType, onMomoTypeCh
             description: 'Thanh toán qua ví điện tử MoMo',
             icon: '📱',
             disabled: false,
-            hasSubOptions: true, // Đánh dấu có lựa chọn con
         },
         {
             id: PAYMENT_METHODS.VNPAY,
             name: 'VNPay',
             description: 'Thanh toán qua VNPay (ATM, Visa, MasterCard...)',
             icon: '💳',
-            disabled: true, // Chưa tích hợp
+            disabled: true,
         },
         {
             id: PAYMENT_METHODS.BANK_TRANSFER,
             name: 'Chuyển khoản ngân hàng',
             description: 'Chuyển khoản trực tiếp vào tài khoản shop',
             icon: '🏦',
-            disabled: true, // Chưa tích hợp
-        },
-    ];
-
-    // Các lựa chọn con cho MoMo
-    const momoSubOptions = [
-        {
-            id: MOMO_TYPES.QR,
-            name: 'Thanh toán bằng QR MoMo',
-            description: 'Quét mã QR bằng ứng dụng MoMo',
-            icon: '📲',
-        },
-        {
-            id: MOMO_TYPES.CARD,
-            name: 'Thanh toán bằng thẻ / MoMo ATM',
-            description: 'Dùng thẻ ATM nội địa hoặc thẻ quốc tế',
-            icon: '💳',
+            disabled: true,
         },
     ];
 
     return (
         <div className="bg-white rounded-2xl shadow-sm p-6">
             <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
-                    <CreditCardIcon className="h-5 w-5 text-rose-500" />
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                    <CreditCardIcon className="h-5 w-5 text-purple-500" />
                 </div>
                 <h2 className="text-xl font-semibold text-gray-800">Phương thức thanh toán</h2>
             </div>
 
             <div className="space-y-3">
                 {paymentMethods.map((method) => (
-                    <div key={method.id}>
-                        {/* Payment Method Option */}
-                        <label
-                            className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedMethod === method.id
-                                    ? 'border-rose-500 bg-rose-50'
-                                    : 'border-gray-200 hover:border-rose-200'
-                                } ${method.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            <input
-                                type="radio"
-                                name="paymentMethod"
-                                value={method.id}
-                                checked={selectedMethod === method.id}
-                                onChange={() => !method.disabled && onChange(method.id)}
-                                disabled={method.disabled}
-                                className="w-5 h-5 text-rose-500 focus:ring-rose-500"
-                            />
-                            <span className="text-2xl">{method.icon}</span>
-                            <div className="flex-1">
-                                <p className="font-medium text-gray-800">
-                                    {method.name}
-                                    {method.disabled && (
-                                        <span className="text-xs text-gray-400 ml-2">(Sắp ra mắt)</span>
-                                    )}
-                                </p>
-                                <p className="text-sm text-gray-500">{method.description}</p>
-                            </div>
-                            {selectedMethod === method.id && !method.disabled && (
-                                <CheckCircleIcon className="h-6 w-6 text-rose-500" />
-                            )}
-                        </label>
-
-                        {/* MoMo Sub-Options - Hiển thị khi chọn MoMo */}
-                        {method.id === PAYMENT_METHODS.MOMO && selectedMethod === PAYMENT_METHODS.MOMO && (
-                            <div className="mt-3 ml-8 p-4 bg-gradient-to-r from-pink-50 to-rose-50 border border-rose-200 rounded-xl animate-fadeIn">
-                                <p className="font-medium text-gray-700 mb-3 flex items-center gap-2">
-                                    <span className="text-lg">🔸</span>
-                                    Chọn hình thức thanh toán MoMo
-                                </p>
-                                <div className="space-y-2">
-                                    {momoSubOptions.map((option) => (
-                                        <label
-                                            key={option.id}
-                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${momoType === option.id
-                                                    ? 'bg-white border-2 border-rose-400 shadow-sm'
-                                                    : 'bg-white/50 border border-gray-200 hover:border-rose-300'
-                                                }`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="momoType"
-                                                value={option.id}
-                                                checked={momoType === option.id}
-                                                onChange={() => onMomoTypeChange(option.id)}
-                                                className="w-4 h-4 text-rose-500 focus:ring-rose-500"
-                                            />
-                                            <span className="text-xl">{option.icon}</span>
-                                            <div className="flex-1">
-                                                <p className="font-medium text-gray-700 text-sm">
-                                                    {option.name}
-                                                </p>
-                                                <p className="text-xs text-gray-500">{option.description}</p>
-                                            </div>
-                                            {momoType === option.id && (
-                                                <CheckCircleIcon className="h-5 w-5 text-rose-500" />
-                                            )}
-                                        </label>
-                                    ))}
-                                </div>
-
-                                {/* MoMo Tips */}
-                                <div className="mt-3 p-2 bg-pink-100/50 rounded-lg">
-                                    <p className="text-xs text-pink-700 flex items-start gap-1">
-                                        <span>💡</span>
-                                        <span>
-                                            {momoType === MOMO_TYPES.QR
-                                                ? 'Bạn sẽ được chuyển đến trang quét mã QR bằng ứng dụng MoMo'
-                                                : 'Bạn sẽ nhập thông tin thẻ ATM/Visa/MasterCard để thanh toán qua MoMo'
-                                            }
-                                        </span>
-                                    </p>
-                                </div>
-                            </div>
+                    <label
+                        key={method.id}
+                        className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedMethod === method.id
+                            ? 'border-rose-500 bg-rose-50'
+                            : 'border-gray-200 hover:border-rose-200'
+                            } ${method.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        <input
+                            type="radio"
+                            name="paymentMethod"
+                            value={method.id}
+                            checked={selectedMethod === method.id}
+                            onChange={() => !method.disabled && onChange(method.id)}
+                            disabled={method.disabled}
+                            className="w-5 h-5 text-rose-500 focus:ring-rose-500"
+                        />
+                        <span className="text-2xl">{method.icon}</span>
+                        <div className="flex-1">
+                            <p className="font-medium text-gray-800">
+                                {method.name}
+                                {method.disabled && (
+                                    <span className="text-xs text-gray-400 ml-2">(Sắp ra mắt)</span>
+                                )}
+                            </p>
+                            <p className="text-sm text-gray-500">{method.description}</p>
+                        </div>
+                        {selectedMethod === method.id && !method.disabled && (
+                            <CheckCircleIcon className="h-6 w-6 text-rose-500" />
                         )}
-                    </div>
+                    </label>
                 ))}
             </div>
+
+            {/* MoMo Info */}
+            {selectedMethod === PAYMENT_METHODS.MOMO && (
+                <div className="mt-4 p-3 bg-pink-50 rounded-xl">
+                    <p className="text-sm text-pink-700 flex items-start gap-2">
+                        <span className="text-lg">📲</span>
+                        <span>
+                            Sau khi đặt hàng, bạn sẽ được chuyển đến trang thanh toán MoMo 
+                            để hoàn tất giao dịch.
+                        </span>
+                    </p>
+                </div>
+            )}
         </div>
     );
-};
+});
 
-/**
- * Note Section
- */
-const NoteSection = ({ note, onChange }) => {
-    return (
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Ghi chú đơn hàng</h2>
-            <textarea
-                name="note"
-                value={note}
-                onChange={onChange}
-                placeholder="Ghi chú thêm cho đơn hàng (ví dụ: giao giờ hành chính, gọi trước khi giao...)"
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors resize-none"
-            />
-        </div>
-    );
-};
+// ========================================
+// NOTE SECTION
+// ========================================
 
-/**
- * Order Summary Component
- */
-const OrderSummary = ({
+const NoteSection = memo(({ note, onChange }) => (
+    <div className="bg-white rounded-2xl shadow-sm p-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">Lời nhắn</h2>
+        <textarea
+            name="note"
+            value={note}
+            onChange={onChange}
+            placeholder="Lời chúc kèm theo hoa, ghi chú đặc biệt cho đơn hàng..."
+            rows={3}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors resize-none"
+        />
+        <p className="text-sm text-gray-500 mt-2">
+            💝 Lời nhắn sẽ được viết tay kèm theo hoa gửi đến người nhận
+        </p>
+    </div>
+));
+
+// ========================================
+// ORDER SUMMARY
+// ========================================
+
+const OrderSummary = memo(({
     cart,
     cartTotal,
     cartCount,
@@ -634,88 +558,86 @@ const OrderSummary = ({
     finalTotal,
     appliedVoucher,
     loading,
-    loadingText = ''
-}) => {
-    return (
-        <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-24">
-            <h3 className="text-xl font-semibold text-gray-800 mb-6">
-                Đơn hàng của bạn
-            </h3>
+    loadingText,
+}) => (
+    <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-24">
+        <h3 className="text-xl font-semibold text-gray-800 mb-6">
+            Đơn hàng của bạn
+        </h3>
 
-            {/* Cart Items */}
-            <div className="space-y-4 max-h-64 overflow-y-auto mb-6 pr-2">
-                {cart.map((item) => (
-                    <CartItemMini key={item.id} item={item} />
-                ))}
-            </div>
-
-            {/* Summary Details */}
-            <div className="space-y-3 py-4 border-y border-gray-100">
-                <div className="flex justify-between text-gray-600">
-                    <span>Tạm tính ({cartCount} sản phẩm)</span>
-                    <span>{formatPrice(cartTotal)}</span>
-                </div>
-
-                {/* Discount */}
-                {appliedVoucher && discountAmount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                        <span>Giảm giá ({appliedVoucher.code})</span>
-                        <span>-{formatPrice(discountAmount)}</span>
-                    </div>
-                )}
-
-                <div className="flex justify-between text-gray-600">
-                    <span>Phí vận chuyển</span>
-                    <span className="text-green-600 font-medium">
-                        {shippingFee > 0 ? formatPrice(shippingFee) : 'Miễn phí'}
-                    </span>
-                </div>
-            </div>
-
-            {/* Total */}
-            <div className="py-4">
-                <div className="flex justify-between text-xl font-bold">
-                    <span>Tổng cộng</span>
-                    <span className="text-rose-600">{formatPrice(finalTotal)}</span>
-                </div>
-                {appliedVoucher && discountAmount > 0 && (
-                    <p className="text-green-600 text-sm mt-1 text-right">
-                        Bạn tiết kiệm được {formatPrice(discountAmount)}
-                    </p>
-                )}
-            </div>
-
-            {/* Submit Button */}
-            <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold hover:from-rose-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-                {loading ? (
-                    <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        {loadingText || 'Đang xử lý...'}
-                    </>
-                ) : (
-                    <>
-                        <ShieldCheckIcon className="h-5 w-5" />
-                        Đặt hàng
-                    </>
-                )}
-            </button>
-
-            {/* Security Note */}
-            <p className="text-center text-sm text-gray-500 mt-4">
-                🔒 Thanh toán an toàn & bảo mật
-            </p>
+        {/* Cart Items */}
+        <div className="space-y-4 max-h-64 overflow-y-auto mb-6 pr-2">
+            {cart.map((item) => (
+                <CartItemMini key={item.id} item={item} />
+            ))}
         </div>
-    );
-};
 
-/**
- * Mini Cart Item for Order Summary
- */
-const CartItemMini = ({ item }) => {
+        {/* Summary Details */}
+        <div className="space-y-3 py-4 border-y border-gray-100">
+            <div className="flex justify-between text-gray-600">
+                <span>Tạm tính ({cartCount} sản phẩm)</span>
+                <span>{formatPrice(cartTotal)}</span>
+            </div>
+
+            {appliedVoucher && discountAmount > 0 && (
+                <div className="flex justify-between text-green-600">
+                    <span>Giảm giá ({appliedVoucher.code})</span>
+                    <span>-{formatPrice(discountAmount)}</span>
+                </div>
+            )}
+
+            <div className="flex justify-between text-gray-600">
+                <span>Phí vận chuyển</span>
+                <span className="text-green-600 font-medium">
+                    {shippingFee > 0 ? formatPrice(shippingFee) : 'Miễn phí'}
+                </span>
+            </div>
+        </div>
+
+        {/* Total */}
+        <div className="py-4">
+            <div className="flex justify-between text-xl font-bold">
+                <span>Tổng cộng</span>
+                <span className="text-rose-600">{formatPrice(finalTotal)}</span>
+            </div>
+            {appliedVoucher && discountAmount > 0 && (
+                <p className="text-green-600 text-sm mt-1 text-right">
+                    Bạn tiết kiệm được {formatPrice(discountAmount)}
+                </p>
+            )}
+        </div>
+
+        {/* Submit Button */}
+        <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold hover:from-rose-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+            {loading ? (
+                <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    {loadingText || 'Đang xử lý...'}
+                </>
+            ) : (
+                <>
+                    <ShieldCheckIcon className="h-5 w-5" />
+                    Đặt hàng
+                </>
+            )}
+        </button>
+
+        {/* Security Note */}
+        <p className="text-center text-sm text-gray-500 mt-4">
+            🔒 Thanh toán an toàn & bảo mật
+        </p>
+    </div>
+));
+
+// ========================================
+// CART ITEM MINI
+// ========================================
+
+const CartItemMini = memo(({ item }) => {
     const { name, price, salePrice, thumbnail, quantity } = item;
     const validThumbnail = getImageUrl(thumbnail);
     const displayPrice = salePrice && salePrice < price ? salePrice : price;
@@ -744,18 +666,19 @@ const CartItemMini = ({ item }) => {
             </div>
         </div>
     );
-};
+});
 
-/**
- * Order Success Screen
- */
+// ========================================
+// ORDER SUCCESS SCREEN
+// ========================================
+
 const OrderSuccessScreen = ({ orderData }) => {
     const orderCode = orderData?.orderCode || orderData?.order_code || orderData?.id || 'N/A';
 
     return (
         <div className="min-h-[70vh] flex items-center justify-center py-16 px-4">
             <div className="text-center max-w-md">
-                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
                     <CheckCircleIcon className="h-14 w-14 text-green-500" />
                 </div>
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
@@ -777,9 +700,20 @@ const OrderSuccessScreen = ({ orderData }) => {
                     <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
                         <h3 className="font-semibold text-gray-700 mb-2">Chi tiết đơn hàng:</h3>
                         <div className="text-sm space-y-1">
-                            <p><span className="text-gray-500">Tổng tiền:</span> <span className="font-medium text-rose-600">{formatPrice(orderData.finalPrice || orderData.total_price || 0)}</span></p>
-                            <p><span className="text-gray-500">Phương thức:</span> <span className="font-medium">{orderData.paymentMethod || 'COD'}</span></p>
-                            <p><span className="text-gray-500">Trạng thái:</span> <span className="font-medium text-yellow-600">Chờ xác nhận</span></p>
+                            <p>
+                                <span className="text-gray-500">Tổng tiền:</span>{' '}
+                                <span className="font-medium text-rose-600">
+                                    {formatPrice(orderData.finalPrice || orderData.total_price || 0)}
+                                </span>
+                            </p>
+                            <p>
+                                <span className="text-gray-500">Phương thức:</span>{' '}
+                                <span className="font-medium">{orderData.paymentMethod || 'COD'}</span>
+                            </p>
+                            <p>
+                                <span className="text-gray-500">Trạng thái:</span>{' '}
+                                <span className="font-medium text-yellow-600">Chờ xác nhận</span>
+                            </p>
                         </div>
                     </div>
                 )}
@@ -804,5 +738,148 @@ const OrderSuccessScreen = ({ orderData }) => {
         </div>
     );
 };
+
+// ========================================
+// REUSABLE FORM COMPONENTS
+// ========================================
+
+/**
+ * Form Input Component
+ */
+const FormInput = memo(({
+    label,
+    name,
+    type = 'text',
+    value,
+    onChange,
+    error,
+    placeholder,
+    icon,
+    hint,
+    required,
+    ...props
+}) => (
+    <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        <div className="relative">
+            {icon && (
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    {icon}
+                </div>
+            )}
+            <input
+                type={type}
+                name={name}
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+                className={`w-full ${icon ? 'pl-10' : 'pl-4'} pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors ${error ? 'border-red-500' : 'border-gray-200'
+                    }`}
+                {...props}
+            />
+        </div>
+        {hint && !error && (
+            <p className="text-gray-500 text-sm mt-1">{hint}</p>
+        )}
+        {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+    </div>
+));
+
+/**
+ * Form Select Component
+ */
+const FormSelect = memo(({
+    label,
+    name,
+    value,
+    onChange,
+    error,
+    options = [],
+    optionLabel = 'label',
+    optionValue = 'value',
+    placeholder,
+    icon,
+    required,
+    disabled,
+    ...props
+}) => (
+    <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        <div className="relative">
+            {icon && (
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    {icon}
+                </div>
+            )}
+            <select
+                name={name}
+                value={value}
+                onChange={onChange}
+                disabled={disabled}
+                className={`w-full ${icon ? 'pl-10' : 'pl-4'} pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors appearance-none bg-white ${error ? 'border-red-500' : 'border-gray-200'
+                    } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                {...props}
+            >
+                <option value="">{placeholder || 'Chọn...'}</option>
+                {options.map((opt, idx) => (
+                    <option key={idx} value={opt[optionValue] || opt}>
+                        {opt[optionLabel] || opt}
+                    </option>
+                ))}
+            </select>
+            {/* Dropdown arrow */}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+        </div>
+        {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+    </div>
+));
+
+/**
+ * Form Textarea Component
+ */
+const FormTextarea = memo(({
+    label,
+    name,
+    value,
+    onChange,
+    error,
+    placeholder,
+    icon,
+    rows = 3,
+    required,
+    ...props
+}) => (
+    <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        <div className="relative">
+            {icon && (
+                <div className="absolute left-3 top-3 text-gray-400">
+                    {icon}
+                </div>
+            )}
+            <textarea
+                name={name}
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+                rows={rows}
+                className={`w-full ${icon ? 'pl-10' : 'pl-4'} pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors resize-none ${error ? 'border-red-500' : 'border-gray-200'
+                    }`}
+                {...props}
+            />
+        </div>
+        {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+    </div>
+));
 
 export default CheckoutPage;

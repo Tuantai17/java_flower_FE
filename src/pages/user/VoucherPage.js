@@ -1,24 +1,46 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     TicketIcon,
-    ClipboardDocumentIcon,
     CheckIcon,
     ClockIcon,
     TagIcon,
     GiftIcon,
+    ArchiveBoxIcon,
+    BookmarkIcon,
 } from '@heroicons/react/24/outline';
+import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import voucherApi from '../../api/voucherApi';
 import { formatPrice } from '../../utils/formatPrice';
 import Breadcrumb from '../../components/user/Breadcrumb';
+import { useAuth } from '../../context/AuthContext';
+import { useApp } from '../../context/AppContext';
+
+/**
+ * ========================================
+ * Voucher Page - Trang Mã Giảm Giá
+ * ========================================
+ * 
+ * Hiển thị tất cả voucher đang hoạt động
+ * Cho phép user "Lưu" voucher vào kho cá nhân
+ */
 
 const VoucherPage = () => {
     const [vouchers, setVouchers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [copiedCode, setCopiedCode] = useState('');
+    const [savedVoucherIds, setSavedVoucherIds] = useState(new Set());
+    const [savingId, setSavingId] = useState(null);
+
+    const { isAuthenticated, user } = useAuth();
+    const { showNotification } = useApp();
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchVouchers();
-    }, []);
+        if (isAuthenticated) {
+            fetchSavedStatus();
+        }
+    }, [isAuthenticated]);
 
     const fetchVouchers = async () => {
         try {
@@ -32,10 +54,69 @@ const VoucherPage = () => {
         }
     };
 
-    const handleCopy = (code) => {
-        navigator.clipboard.writeText(code);
-        setCopiedCode(code);
-        setTimeout(() => setCopiedCode(''), 2000);
+    const fetchSavedStatus = async () => {
+        try {
+            const savedVouchers = await voucherApi.getMySavedVouchers();
+            const ids = new Set((savedVouchers || []).map(v => v.voucherId));
+            setSavedVoucherIds(ids);
+        } catch (error) {
+            // Nếu API trả về 404, có thể do chưa có voucher nào được lưu hoặc API chưa available
+            if (error.response?.status === 404) {
+                console.log('No saved vouchers found or API not available yet');
+                setSavedVoucherIds(new Set());
+            } else {
+                console.error('Error fetching saved status:', error);
+            }
+        }
+    };
+
+    const handleSaveVoucher = async (voucherId) => {
+        if (!isAuthenticated) {
+            showNotification({
+                type: 'warning',
+                message: 'Vui lòng đăng nhập để lưu voucher',
+            });
+            navigate('/login', { state: { from: '/vouchers' } });
+            return;
+        }
+
+        setSavingId(voucherId);
+        try {
+            if (savedVoucherIds.has(voucherId)) {
+                // Unsave
+                await voucherApi.unsaveVoucher(voucherId);
+                setSavedVoucherIds(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(voucherId);
+                    return newSet;
+                });
+                showNotification({
+                    type: 'info',
+                    message: 'Đã xóa voucher khỏi kho',
+                });
+            } else {
+                // Save
+                await voucherApi.saveVoucher(voucherId);
+                setSavedVoucherIds(prev => new Set(prev).add(voucherId));
+                showNotification({
+                    type: 'success',
+                    message: 'Đã lưu voucher vào kho! 🎉',
+                });
+            }
+        } catch (error) {
+            let message = 'Có lỗi xảy ra';
+            if (error.response?.status === 404) {
+                message = 'Tính năng đang được cập nhật. Vui lòng thử lại sau!';
+            } else if (error.response?.data?.message) {
+                message = error.response.data.message;
+            }
+            showNotification({
+                type: 'error',
+                message: message,
+            });
+        } finally {
+            setSavingId(null);
+        }
     };
 
     // Format date
@@ -69,9 +150,19 @@ const VoucherPage = () => {
                     </div>
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">Mã giảm giá</h1>
                     <p className="text-gray-500 max-w-md mx-auto">
-                        Khám phá các mã giảm giá độc quyền dành cho bạn.
-                        Sao chép mã và sử dụng khi thanh toán!
+                        Lưu mã giảm giá vào kho và sử dụng khi thanh toán!
                     </p>
+
+                    {/* Link to My Vouchers */}
+                    {isAuthenticated && (
+                        <Link
+                            to="/my-vouchers"
+                            className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-pink-50 text-pink-600 rounded-full font-medium hover:bg-pink-100 transition-colors"
+                        >
+                            <ArchiveBoxIcon className="h-5 w-5" />
+                            Xem kho voucher của tôi
+                        </Link>
+                    )}
                 </div>
 
                 {/* Loading State */}
@@ -107,9 +198,11 @@ const VoucherPage = () => {
                             <VoucherCard
                                 key={voucher.id || voucher.code}
                                 voucher={voucher}
-                                onCopy={handleCopy}
-                                isCopied={copiedCode === voucher.code}
+                                isSaved={savedVoucherIds.has(voucher.id)}
+                                isSaving={savingId === voucher.id}
+                                onSave={() => handleSaveVoucher(voucher.id)}
                                 formatDate={formatDate}
+                                isAuthenticated={isAuthenticated}
                             />
                         ))}
                     </div>
@@ -127,9 +220,9 @@ const VoucherPage = () => {
                                 1
                             </div>
                             <div>
-                                <h4 className="font-medium text-gray-800">Chọn mã giảm giá</h4>
+                                <h4 className="font-medium text-gray-800">Lưu voucher</h4>
                                 <p className="text-sm text-gray-600">
-                                    Nhấn nút "Sao chép" để copy mã voucher bạn muốn sử dụng
+                                    Nhấn nút "Lưu ngay" để thêm voucher vào kho của bạn
                                 </p>
                             </div>
                         </div>
@@ -149,9 +242,9 @@ const VoucherPage = () => {
                                 3
                             </div>
                             <div>
-                                <h4 className="font-medium text-gray-800">Nhập mã khi thanh toán</h4>
+                                <h4 className="font-medium text-gray-800">Chọn voucher khi thanh toán</h4>
                                 <p className="text-sm text-gray-600">
-                                    Dán mã vào ô "Mã giảm giá" tại trang giỏ hàng và nhấn "Áp dụng"
+                                    Chọn voucher từ kho của bạn tại trang thanh toán
                                 </p>
                             </div>
                         </div>
@@ -165,7 +258,7 @@ const VoucherPage = () => {
 /**
  * VoucherCard Component
  */
-const VoucherCard = ({ voucher, onCopy, isCopied, formatDate }) => {
+const VoucherCard = ({ voucher, isSaved, isSaving, onSave, formatDate, isAuthenticated }) => {
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow group">
             {/* Header */}
@@ -175,22 +268,28 @@ const VoucherCard = ({ voucher, onCopy, isCopied, formatDate }) => {
                         <TicketIcon className="h-6 w-6" />
                         <span className="font-mono font-bold text-lg">{voucher.code}</span>
                     </div>
+                    
+                    {/* Save Button */}
                     <button
-                        onClick={() => onCopy(voucher.code)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${isCopied
-                                ? 'bg-green-500 text-white'
+                        onClick={onSave}
+                        disabled={isSaving}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                            isSaved
+                                ? 'bg-white text-rose-500'
                                 : 'bg-white/20 hover:bg-white/30 text-white'
-                            }`}
+                        } ${isSaving ? 'opacity-50 cursor-wait' : ''}`}
                     >
-                        {isCopied ? (
+                        {isSaving ? (
+                            <span className="animate-spin">⏳</span>
+                        ) : isSaved ? (
                             <>
-                                <CheckIcon className="h-4 w-4" />
-                                Đã sao chép
+                                <BookmarkSolidIcon className="h-4 w-4" />
+                                Đã lưu
                             </>
                         ) : (
                             <>
-                                <ClipboardDocumentIcon className="h-4 w-4" />
-                                Sao chép
+                                <BookmarkIcon className="h-4 w-4" />
+                                Lưu ngay
                             </>
                         )}
                     </button>
@@ -237,6 +336,16 @@ const VoucherCard = ({ voucher, onCopy, isCopied, formatDate }) => {
                         </span>
                     </div>
                 </div>
+
+                {/* CTA for logged in users who saved */}
+                {isAuthenticated && isSaved && (
+                    <Link
+                        to="/my-vouchers"
+                        className="mt-4 block text-center text-sm text-pink-600 hover:text-pink-700 font-medium"
+                    >
+                        Xem trong kho voucher →
+                    </Link>
+                )}
             </div>
         </div>
     );

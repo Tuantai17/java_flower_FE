@@ -29,6 +29,7 @@ import ProfilePage from './pages/user/ProfilePage';
 import CartPage from './pages/user/CartPage';
 import CheckoutPage from './pages/user/CheckoutPage';
 import VoucherPage from './pages/user/VoucherPage';
+import MyVouchersPage from './pages/user/MyVouchersPage';
 import MyOrdersPage from './pages/user/MyOrdersPage';
 import OrderDetailPage from './pages/user/OrderDetailPage';
 import PaymentResultPage from './pages/user/PaymentResultPage';
@@ -46,6 +47,7 @@ import Dashboard from './pages/admin/Dashboard';
 import ProductList from './pages/admin/product/ProductList';
 import ProductCreate from './pages/admin/product/ProductCreate';
 import ProductEdit from './pages/admin/product/ProductEdit';
+import ProductShow from './pages/admin/product/ProductShow';
 import CategoryList from './pages/admin/category/CategoryList';
 import CategoryCreate from './pages/admin/category/CategoryCreate';
 import CategoryEdit from './pages/admin/category/CategoryEdit';
@@ -88,6 +90,7 @@ function App() {
                   <Route path="about" element={<AboutPage />} />
                   <Route path="contact" element={<ContactPage />} />
                   <Route path="vouchers" element={<VoucherPage />} />
+                  <Route path="my-vouchers" element={<MyVouchersPage />} />
 
                   {/* USER ACCOUNT */}
                   <Route path="account" element={<ProfilePage />} />
@@ -138,6 +141,7 @@ function App() {
                   {/* PRODUCT */}
                   <Route path="products" element={<ProductList />} />
                   <Route path="products/create" element={<ProductCreate />} />
+                  <Route path="products/:id" element={<ProductShow />} />
                   <Route path="products/edit/:id" element={<ProductEdit />} />
 
                   {/* CATEGORY */}

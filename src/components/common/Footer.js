@@ -1,13 +1,62 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
     PhoneIcon,
     EnvelopeIcon,
-    MapPinIcon
+    MapPinIcon,
+    CheckCircleIcon,
+    ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
+import voucherApi from '../../api/voucherApi';
 
 const Footer = () => {
     const currentYear = new Date().getFullYear();
+    
+    // Newsletter form state
+    const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(null); // { voucherCode, message }
+    const [error, setError] = useState('');
+
+    // Email validation
+    const validateEmail = (email) => {
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return regex.test(email);
+    };
+
+    // Handle newsletter submit
+    const handleNewsletterSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setSuccess(null);
+
+        // Validate
+        if (!email.trim()) {
+            setError('Vui lòng nhập email');
+            return;
+        }
+        if (!validateEmail(email)) {
+            setError('Email không hợp lệ');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await voucherApi.subscribeNewsletter(email.trim());
+            setSuccess({
+                voucherCode: response.voucherCode,
+                message: response.message || 'Đăng ký thành công!',
+                discountPercent: response.discountPercent,
+                maxDiscount: response.maxDiscount
+            });
+            setEmail(''); // Clear input
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại!';
+            setError(errorMsg);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const footerLinks = {
         about: [
@@ -39,21 +88,81 @@ const Footer = () => {
                         Đăng ký nhận tin khuyến mãi
                     </h3>
                     <p className="text-pink-100 mb-6 max-w-lg mx-auto">
-                        Nhận ngay voucher giảm 10% cho đơn hàng đầu tiên khi đăng ký email
+                        Nhận ngay voucher giảm 30% cho đơn hàng đầu tiên khi đăng ký email
                     </p>
-                    <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-                        <input
-                            type="email"
-                            placeholder="Nhập email của bạn"
-                            className="flex-1 px-6 py-3 rounded-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-white"
-                        />
-                        <button
-                            type="submit"
-                            className="px-8 py-3 bg-white text-pink-600 font-semibold rounded-full hover:bg-pink-50 transition-colors shadow-lg"
-                        >
-                            Đăng ký
-                        </button>
-                    </form>
+
+                    {/* Success Message */}
+                    {success && (
+                        <div className="max-w-md mx-auto mb-6 bg-white/20 backdrop-blur-sm rounded-2xl p-6 border border-white/30">
+                            <div className="flex items-center justify-center gap-2 text-white mb-3">
+                                <CheckCircleIcon className="h-6 w-6" />
+                                <span className="font-semibold">Đăng ký thành công!</span>
+                            </div>
+                            <div className="bg-white rounded-xl p-4 text-gray-800">
+                                <p className="text-sm mb-2">Mã giảm giá {success.discountPercent}% của bạn:</p>
+                                <div className="bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xl font-bold py-3 px-6 rounded-lg tracking-wider">
+                                    {success.voucherCode}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-3">
+                                    Giảm tối đa {success.maxDiscount} • Có hiệu lực 30 ngày
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setSuccess(null)}
+                                className="mt-4 text-white/80 hover:text-white text-sm underline"
+                            >
+                                Đăng ký email khác
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Form - only show if not success */}
+                    {!success && (
+                        <form onSubmit={handleNewsletterSubmit} className="max-w-md mx-auto">
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => {
+                                        setEmail(e.target.value);
+                                        setError(''); // Clear error on input
+                                    }}
+                                    placeholder="Nhập email của bạn"
+                                    className={`flex-1 px-6 py-3 rounded-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-white ${
+                                        error ? 'ring-2 ring-red-300' : ''
+                                    }`}
+                                    disabled={loading}
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className={`px-8 py-3 bg-white text-pink-600 font-semibold rounded-full shadow-lg transition-all ${
+                                        loading 
+                                            ? 'opacity-70 cursor-not-allowed' 
+                                            : 'hover:bg-pink-50 hover:scale-105'
+                                    }`}
+                                >
+                                    {loading ? (
+                                        <span className="flex items-center gap-2">
+                                            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                            </svg>
+                                            Đang xử lý...
+                                        </span>
+                                    ) : 'Đăng ký'}
+                                </button>
+                            </div>
+                            
+                            {/* Error Message */}
+                            {error && (
+                                <div className="flex items-center justify-center gap-2 mt-3 text-white bg-red-500/30 backdrop-blur-sm rounded-full py-2 px-4">
+                                    <ExclamationCircleIcon className="h-5 w-5" />
+                                    <span className="text-sm">{error}</span>
+                                </div>
+                            )}
+                        </form>
+                    )}
                 </div>
             </div>
 

@@ -38,15 +38,24 @@ const Navbar = ({ onMenuToggle }) => {
             '/admin/reviews': 'Quản lý Đánh giá',
         };
 
+        // Check for dynamic routes first
+        if (location.pathname.includes('/edit/')) {
+            if (location.pathname.includes('products')) return 'Chỉnh sửa sản phẩm';
+            if (location.pathname.includes('categories')) return 'Chỉnh sửa danh mục';
+            if (location.pathname.includes('vouchers')) return 'Chỉnh sửa Voucher';
+        }
+        
+        // Check for product detail page (e.g., /admin/products/123)
+        if (location.pathname.match(/^\/admin\/products\/\d+$/)) {
+            return 'Chi tiết sản phẩm';
+        }
+
+        // Check for order detail page
+        if (location.pathname.match(/^\/admin\/orders\/\d+$/)) {
+            return 'Chi tiết đơn hàng';
+        }
+
         for (const [path, title] of Object.entries(paths)) {
-            if (location.pathname.startsWith(path) && location.pathname !== '/admin/products/create' && location.pathname === path) {
-                return title;
-            }
-            if (location.pathname.includes('/edit/')) {
-                if (location.pathname.includes('products')) return 'Chỉnh sửa sản phẩm';
-                if (location.pathname.includes('categories')) return 'Chỉnh sửa danh mục';
-                if (location.pathname.includes('vouchers')) return 'Chỉnh sửa Voucher';
-            }
             if (location.pathname === path) return title;
         }
 

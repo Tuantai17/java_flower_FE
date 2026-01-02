@@ -150,14 +150,15 @@ const ProductTable = ({
                                 {/* Actions */}
                                 <td>
                                     <div className="flex items-center justify-center gap-2">
+                                        {/* View Product Detail (Admin) */}
                                         <Link
-                                            to={`/product/${product.id}`}
-                                            target="_blank"
+                                            to={`/admin/products/${product.id}`}
                                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            title="Xem"
+                                            title="Chi tiết & Đánh giá"
                                         >
                                             <EyeIcon className="h-5 w-5" />
                                         </Link>
+                                        {/* Edit */}
                                         <Link
                                             to={`/admin/products/edit/${product.id}`}
                                             className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
@@ -165,6 +166,7 @@ const ProductTable = ({
                                         >
                                             <PencilIcon className="h-5 w-5" />
                                         </Link>
+                                        {/* Adjust Stock */}
                                         {onAdjustStock && (
                                             <button
                                                 onClick={() => onAdjustStock?.(product)}
@@ -174,6 +176,7 @@ const ProductTable = ({
                                                 <ArrowPathIcon className="h-5 w-5" />
                                             </button>
                                         )}
+                                        {/* Delete */}
                                         <button
                                             onClick={() => onDelete?.(product.id)}
                                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"

@@ -56,6 +56,103 @@ const voucherApi = {
         return unwrapResponse(response);
     },
 
+    // ==================== NEWSLETTER APIs ====================
+
+    /**
+     * Đăng ký nhận tin khuyến mãi và nhận voucher welcome
+     * POST /api/public/newsletter/subscribe
+     * 
+     * @param {string} email - Email đăng ký
+     * @returns {Object} { voucherCode, discountPercent, maxDiscount, expiryDate, message }
+     */
+    subscribeNewsletter: async (email) => {
+        console.log(`📧 Subscribing newsletter for: ${email}`);
+        const response = await axiosInstance.post('/public/newsletter/subscribe', { email });
+        return unwrapResponse(response);
+    },
+
+    /**
+     * Kiểm tra email đã đăng ký newsletter chưa
+     * GET /api/public/newsletter/check
+     */
+    checkNewsletterSubscription: async (email) => {
+        const response = await axiosInstance.get('/public/newsletter/check', { params: { email } });
+        return unwrapResponse(response);
+    },
+
+    // ==================== SAVED VOUCHER APIs (Kho Voucher) ====================
+
+    /**
+     * Lưu voucher vào kho cá nhân
+     * POST /api/vouchers/save/{voucherId}
+     */
+    saveVoucher: async (voucherId) => {
+        console.log(`💾 Saving voucher ${voucherId} to wallet`);
+        const response = await axiosInstance.post(`/vouchers/save/${voucherId}`);
+        return unwrapResponse(response);
+    },
+
+    /**
+     * Xóa voucher khỏi kho
+     * DELETE /api/vouchers/unsave/{voucherId}
+     */
+    unsaveVoucher: async (voucherId) => {
+        console.log(`🗑️ Removing voucher ${voucherId} from wallet`);
+        const response = await axiosInstance.delete(`/vouchers/unsave/${voucherId}`);
+        return unwrapResponse(response);
+    },
+
+    /**
+     * Kiểm tra voucher đã được lưu chưa
+     * GET /api/vouchers/check-saved/{voucherId}
+     */
+    checkVoucherSaved: async (voucherId) => {
+        const response = await axiosInstance.get(`/vouchers/check-saved/${voucherId}`);
+        const data = unwrapResponse(response);
+        return data?.isSaved || false;
+    },
+
+    /**
+     * Lấy tất cả voucher trong kho của user
+     * GET /api/vouchers/my-vouchers
+     */
+    getMySavedVouchers: async () => {
+        console.log('📦 Fetching my voucher wallet');
+        const response = await axiosInstance.get('/vouchers/my-vouchers');
+        return unwrapResponse(response);
+    },
+
+    /**
+     * Lấy voucher theo filter
+     * GET /api/vouchers/my-vouchers/filter?type=available|expiring|expired|used
+     */
+    getMyVouchersByFilter: async (filterType = 'all') => {
+        console.log(`📦 Fetching vouchers with filter: ${filterType}`);
+        const response = await axiosInstance.get('/vouchers/my-vouchers/filter', {
+            params: { type: filterType }
+        });
+        return unwrapResponse(response);
+    },
+
+    /**
+     * Lấy voucher còn dùng được (cho checkout)
+     * GET /api/vouchers/my-vouchers/available
+     */
+    getMyAvailableVouchers: async () => {
+        console.log('🎟️ Fetching available vouchers for checkout');
+        const response = await axiosInstance.get('/vouchers/my-vouchers/available');
+        return unwrapResponse(response);
+    },
+
+    /**
+     * Đếm số voucher trong kho
+     * GET /api/vouchers/my-vouchers/counts
+     */
+    getVoucherCounts: async () => {
+        const response = await axiosInstance.get('/vouchers/my-vouchers/counts');
+        return unwrapResponse(response);
+    },
+
     // ==================== ADMIN APIs ====================
 
     /**

@@ -221,7 +221,29 @@ const OrderDetailPage = () => {
 
                     {/* Right Column */}
                     <div className="space-y-6">
-                        {/* Customer Info */}
+                        {/* Sender Info - Thông tin người gửi */}
+                        <div className="bg-white rounded-2xl shadow-sm p-6">
+                            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                <UserIcon className="h-5 w-5 text-rose-500" />
+                                Thông tin người gửi
+                            </h2>
+                            <div className="space-y-3 text-sm">
+                                <div className="flex items-start gap-3">
+                                    <UserIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                                    <span>{order.senderName || order.customerName || 'N/A'}</span>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <PhoneIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                                    <span>{order.senderPhone || order.customerPhone || 'N/A'}</span>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <EnvelopeIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                                    <span>{order.senderEmail || order.customerEmail || 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recipient Info - Thông tin người nhận */}
                         <div className="bg-white rounded-2xl shadow-sm p-6">
                             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                                 <TruckIcon className="h-5 w-5 text-rose-500" />
@@ -230,20 +252,37 @@ const OrderDetailPage = () => {
                             <div className="space-y-3 text-sm">
                                 <div className="flex items-start gap-3">
                                     <UserIcon className="h-5 w-5 text-gray-400 mt-0.5" />
-                                    <span>{order.customerName || 'N/A'}</span>
+                                    <div>
+                                        <span className="font-medium">{order.recipientName || order.senderName || 'N/A'}</span>
+                                        <p className="text-gray-400 text-xs">Người nhận</p>
+                                    </div>
                                 </div>
                                 <div className="flex items-start gap-3">
                                     <PhoneIcon className="h-5 w-5 text-gray-400 mt-0.5" />
-                                    <span>{order.customerPhone || 'N/A'}</span>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <EnvelopeIcon className="h-5 w-5 text-gray-400 mt-0.5" />
-                                    <span>{order.customerEmail || 'N/A'}</span>
+                                    <div>
+                                        <span className="font-medium">{order.recipientPhone || order.senderPhone || 'N/A'}</span>
+                                        <p className="text-gray-400 text-xs">SĐT người nhận</p>
+                                    </div>
                                 </div>
                                 <div className="flex items-start gap-3">
                                     <MapPinIcon className="h-5 w-5 text-gray-400 mt-0.5" />
-                                    <span>{order.shippingAddress || 'N/A'}</span>
+                                    <div>
+                                        <span className="font-medium">{order.shippingAddress || buildAddress(order) || 'N/A'}</span>
+                                        <p className="text-gray-400 text-xs">Địa chỉ giao hàng</p>
+                                    </div>
                                 </div>
+                                {(order.deliveryDate || order.deliveryTime) && (
+                                    <div className="flex items-start gap-3">
+                                        <ClockIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                                        <div>
+                                            <span className="font-medium">
+                                                {order.deliveryDate && formatDeliveryDate(order.deliveryDate)}
+                                                {order.deliveryTime && ` - ${order.deliveryTime}`}
+                                            </span>
+                                            <p className="text-gray-400 text-xs">Thời gian giao</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -440,6 +479,30 @@ const OrderTimeline = ({ status }) => {
 };
 
 // Helpers
+const buildAddress = (order) => {
+    const parts = [
+        order.addressDetail,
+        order.district,
+        order.province
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : null;
+};
+
+const formatDeliveryDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('vi-VN', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+        });
+    } catch {
+        return dateString;
+    }
+};
+
 const getStatusInfo = (status) => {
     const statusMap = {
         [ORDER_STATUS.PENDING]: {

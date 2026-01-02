@@ -120,7 +120,7 @@ const HomePage = () => {
             </section>
 
             {/* CTA Section */}
-            <section className="py-20 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white">
+            {/* <section className="py-20 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white">
                 <div className="container-custom text-center">
                     <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
                         Sẵn sàng đặt hoa?
@@ -143,7 +143,7 @@ const HomePage = () => {
                         </a>
                     </div>
                 </div>
-            </section>
+            </section> */}
         </div>
     );
 };

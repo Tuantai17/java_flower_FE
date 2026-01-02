@@ -39,8 +39,9 @@ const OrderDetail = () => {
         setLoading(true);
         setError('');
         try {
-            console.log('🔄 Fetching order detail:', id);
-            const data = await orderApi.getOrderById(id);
+            console.log('🔄 Fetching order detail (admin):', id);
+            // Sử dụng API Admin để đảm bảo có quyền truy cập và đúng token
+            const data = await orderApi.getAdminOrderById(id);
             console.log('✅ Order detail:', data);
             setOrder(data);
         } catch (err) {
@@ -180,41 +181,77 @@ const OrderDetail = () => {
 
                 {/* Right Column */}
                 <div className="space-y-6">
-                    {/* Customer Info */}
+                    {/* Sender Info - Thông tin người gửi */}
                     <div className="bg-white rounded-xl shadow-sm p-6">
                         <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                             <UserIcon className="h-5 w-5 text-blue-500" />
-                            Thông tin khách hàng
+                            Thông tin người gửi
                         </h2>
                         <div className="space-y-3 text-sm">
                             <div className="flex items-start gap-3">
                                 <UserIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                                 <div>
-                                    <p className="font-medium">{order.customerName || 'N/A'}</p>
+                                    <p className="font-medium">{order.senderName || order.customerName || 'N/A'}</p>
                                     <p className="text-gray-500 text-xs">Họ tên</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
                                 <PhoneIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                                 <div>
-                                    <p className="font-medium">{order.customerPhone || 'N/A'}</p>
+                                    <p className="font-medium">{order.senderPhone || order.customerPhone || 'N/A'}</p>
                                     <p className="text-gray-500 text-xs">Số điện thoại</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
                                 <EnvelopeIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                                 <div>
-                                    <p className="font-medium">{order.customerEmail || 'N/A'}</p>
+                                    <p className="font-medium">{order.senderEmail || order.customerEmail || 'N/A'}</p>
                                     <p className="text-gray-500 text-xs">Email</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Recipient Info - Thông tin người nhận */}
+                    <div className="bg-white rounded-xl shadow-sm p-6">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <TruckIcon className="h-5 w-5 text-blue-500" />
+                            Thông tin giao hàng
+                        </h2>
+                        <div className="space-y-3 text-sm">
+                            <div className="flex items-start gap-3">
+                                <UserIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                                <div>
+                                    <p className="font-medium">{order.recipientName || order.senderName || 'N/A'}</p>
+                                    <p className="text-gray-500 text-xs">Người nhận</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <PhoneIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                                <div>
+                                    <p className="font-medium">{order.recipientPhone || order.senderPhone || 'N/A'}</p>
+                                    <p className="text-gray-500 text-xs">SĐT người nhận</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
                                 <MapPinIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                                 <div>
-                                    <p className="font-medium">{order.shippingAddress || 'N/A'}</p>
+                                    <p className="font-medium">{order.shippingAddress || buildAddress(order) || 'N/A'}</p>
                                     <p className="text-gray-500 text-xs">Địa chỉ giao hàng</p>
                                 </div>
                             </div>
+                            {(order.deliveryDate || order.deliveryTime) && (
+                                <div className="flex items-start gap-3">
+                                    <ClockIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                                    <div>
+                                        <p className="font-medium">
+                                            {order.deliveryDate && formatDeliveryDate(order.deliveryDate)}
+                                            {order.deliveryTime && ` - ${order.deliveryTime}`}
+                                        </p>
+                                        <p className="text-gray-500 text-xs">Thời gian giao</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -399,6 +436,30 @@ const OrderItemRow = ({ item }) => {
 };
 
 // Helpers
+const buildAddress = (order) => {
+    const parts = [
+        order.addressDetail,
+        order.district,
+        order.province
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : null;
+};
+
+const formatDeliveryDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('vi-VN', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+        });
+    } catch {
+        return dateString;
+    }
+};
+
 const getStatusLabel = (status) => {
     const labels = {
         [ORDER_STATUS.PENDING]: 'Chờ xác nhận',

@@ -118,7 +118,7 @@ const ReviewModal = ({
                 orderId: orderId,
                 rating: formData.rating,
                 comment: formData.comment.trim(),
-                imageUrls: formData.imageUrls,
+                images: formData.imageUrls, // Backend expects 'images' field, not 'imageUrls'
             };
 
             await reviewApi.createReview(reviewData);

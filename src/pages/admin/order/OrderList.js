@@ -94,9 +94,10 @@ const OrderList = () => {
         if (!searchQuery) return true;
         const query = searchQuery.toLowerCase();
         const orderCode = (order.orderCode || order.order_code || '').toLowerCase();
-        const customerName = (order.customerName || '').toLowerCase();
-        const customerPhone = (order.customerPhone || '').toLowerCase();
-        return orderCode.includes(query) || customerName.includes(query) || customerPhone.includes(query);
+        // Sử dụng senderName/senderPhone theo cấu trúc dữ liệu mới từ backend
+        const senderName = (order.senderName || order.customerName || '').toLowerCase();
+        const senderPhone = (order.senderPhone || order.customerPhone || '').toLowerCase();
+        return orderCode.includes(query) || senderName.includes(query) || senderPhone.includes(query);
     });
 
     return (
@@ -269,10 +270,10 @@ const OrderRow = ({ order, onUpdateStatus, isUpdating }) => {
                 <p className="font-semibold text-gray-800">{orderCode}</p>
             </td>
 
-            {/* Customer */}
+            {/* Customer - Người đặt hàng (Sender) */}
             <td className="px-6 py-4">
-                <p className="font-medium text-gray-800">{order.customerName || 'N/A'}</p>
-                <p className="text-sm text-gray-500">{order.customerPhone || 'N/A'}</p>
+                <p className="font-medium text-gray-800">{order.senderName || order.customerName || 'N/A'}</p>
+                <p className="text-sm text-gray-500">{order.senderPhone || order.customerPhone || 'N/A'}</p>
             </td>
 
             {/* Total */}
