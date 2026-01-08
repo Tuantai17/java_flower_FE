@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { StarIcon, ChatBubbleLeftIcon, PhotoIcon } from '@heroicons/react/24/solid';
+import { ChatBubbleLeftIcon } from '@heroicons/react/24/solid';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import reviewApi from '../../api/reviewApi';
 import StarRating from '../common/StarRating';
+import ticketWebSocketService from '../../services/ticketWebSocketService';
 
 /**
  * ========================================
@@ -13,6 +14,7 @@ import StarRating from '../common/StarRating';
  * 
  * Hiển thị danh sách đánh giá của sản phẩm
  * Bao gồm: avatar, rating, comment, images, admin reply
+ * Hỗ trợ realtime updates qua WebSocket
  */
 
 const ReviewList = ({ productId }) => {
@@ -26,40 +28,69 @@ const ReviewList = ({ productId }) => {
         totalElements: 0,
     });
 
-    // Fetch reviews
+    // Fetch reviews - wrapped in useCallback for WebSocket handler
+    const fetchReviews = useCallback(async () => {
+        if (!productId) return;
+
+        try {
+            setLoading(true);
+            const data = await reviewApi.getProductReviews(
+                productId,
+                pagination.page,
+                pagination.size
+            );
+
+            // Handle paginated response
+            if (data?.content) {
+                setReviews(data.content);
+                setPagination(prev => ({
+                    ...prev,
+                    totalPages: data.totalPages,
+                    totalElements: data.totalElements,
+                }));
+            } else if (Array.isArray(data)) {
+                setReviews(data);
+            }
+        } catch (err) {
+            setError('Không thể tải đánh giá');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [productId, pagination.page, pagination.size]);
+
+    // Fetch reviews on mount and pagination change
     useEffect(() => {
-        const fetchReviews = async () => {
-            if (!productId) return;
+        fetchReviews();
+    }, [fetchReviews]);
 
-            try {
-                setLoading(true);
-                const data = await reviewApi.getProductReviews(
-                    productId,
-                    pagination.page,
-                    pagination.size
-                );
+    // Subscribe to WebSocket for realtime review updates
+    useEffect(() => {
+        if (!productId) return;
 
-                // Handle paginated response
-                if (data?.content) {
-                    setReviews(data.content);
-                    setPagination(prev => ({
-                        ...prev,
-                        totalPages: data.totalPages,
-                        totalElements: data.totalElements,
-                    }));
-                } else if (Array.isArray(data)) {
-                    setReviews(data);
-                }
-            } catch (err) {
-                setError('Không thể tải đánh giá');
-                console.error(err);
-            } finally {
-                setLoading(false);
+        const handleReviewUpdate = (payload) => {
+            console.log('⭐ Realtime product review update:', payload);
+            
+            // Update review in place if it's a reply
+            if (payload.action === 'REPLY' && payload.review) {
+                setReviews(prev => prev.map(r => 
+                    r.id === payload.review.id ? payload.review : r
+                ));
+            }
+            // Refresh list for new reviews
+            else if (payload.action === 'NEW') {
+                fetchReviews();
             }
         };
 
-        fetchReviews();
-    }, [productId, pagination.page, pagination.size]);
+        // Subscribe to product reviews
+        ticketWebSocketService.subscribeToProductReviews(productId, handleReviewUpdate);
+
+        // Cleanup on unmount
+        return () => {
+            ticketWebSocketService.unsubscribeFromProductReviews(productId);
+        };
+    }, [productId, fetchReviews]);
 
     // Change page
     const handlePageChange = (newPage) => {

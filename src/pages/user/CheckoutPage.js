@@ -25,6 +25,9 @@ import { formatPrice } from '../../utils/formatPrice';
 import { getImageUrl } from '../../utils/imageUrl';
 import { PAYMENT_METHODS } from '../../api/orderApi';
 
+// Address Autocomplete (không có map, có nút chọn địa chỉ của tôi)
+import AddressAutocomplete from '../../components/common/AddressAutocomplete';
+
 // Icons
 import {
     ShoppingBagIcon,
@@ -96,6 +99,17 @@ const CheckoutPage = () => {
                                 onChange={checkout.handleChange}
                                 provinces={checkout.provinces}
                                 districts={checkout.availableDistricts}
+                                userAddress={checkout.user?.address || ''}
+                                onAddressSelect={(addressValue) => {
+                                    // Cập nhật form với dữ liệu từ AddressAutocomplete
+                                    checkout.setFormFields({
+                                        addressDetail: addressValue.addressDetail || addressValue.addressLine,
+                                        lat: addressValue.lat,
+                                        lng: addressValue.lng,
+                                        geoProvider: addressValue.provider,
+                                        placeId: addressValue.placeId,
+                                    });
+                                }}
                             />
 
                             {/* Delivery Schedule */}
@@ -295,7 +309,7 @@ const RecipientInfoSection = memo(({ formData, errors, onChange, onCopyFromSende
 // SHIPPING ADDRESS SECTION
 // ========================================
 
-const ShippingAddressSection = memo(({ formData, errors, onChange, provinces, districts }) => (
+const ShippingAddressSection = memo(({ formData, errors, onChange, provinces, districts, onAddressSelect, userAddress }) => (
     <div className="bg-white rounded-2xl shadow-sm p-6">
         <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -337,17 +351,27 @@ const ShippingAddressSection = memo(({ formData, errors, onChange, provinces, di
                 required
             />
 
-            {/* Address Detail */}
+            {/* Address Detail với Autocomplete */}
             <div className="md:col-span-2">
-                <FormTextarea
-                    label="Địa chỉ chi tiết"
-                    name="addressDetail"
-                    value={formData.addressDetail}
-                    onChange={onChange}
+                <AddressAutocomplete
+                    value={{
+                        addressLine: formData.addressDetail || '',
+                        lat: formData.lat,
+                        lng: formData.lng,
+                        provider: formData.geoProvider,
+                        placeId: formData.placeId,
+                    }}
+                    onChange={(addressValue) => {
+                        onAddressSelect({
+                            ...addressValue,
+                            // Map addressLine to addressDetail for form
+                            addressDetail: addressValue.addressLine,
+                        });
+                    }}
+                    userAddress={userAddress}
                     error={errors.addressDetail}
-                    placeholder="Số nhà, tên đường, tòa nhà, số phòng..."
-                    icon={<MapPinIcon className="h-5 w-5" />}
-                    rows={2}
+                    label="Địa chỉ chi tiết"
+                    placeholder="Số nhà, tên đường, tòa nhà... (có gợi ý tự động)"
                     required
                 />
             </div>

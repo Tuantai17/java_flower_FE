@@ -123,7 +123,8 @@ const ReviewModal = ({
 
             await reviewApi.createReview(reviewData);
 
-            // Success
+            // Success - Review is auto-approved and displayed immediately
+            alert('Đánh giá của bạn đã được gửi thành công và hiển thị ngay trên trang sản phẩm!');
             onSuccess?.();
             onClose();
         } catch (error) {

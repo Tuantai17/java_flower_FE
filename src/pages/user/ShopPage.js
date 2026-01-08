@@ -244,8 +244,8 @@ const ShopPage = () => {
 
                         {(filters.minPrice || filters.maxPrice) && (
                             <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                                Giá: {filters.minPrice ? `${Number(filters.minPrice).toLocaleString('vi-VN')}đ` : '0đ'}
-                                - {filters.maxPrice ? `${Number(filters.maxPrice).toLocaleString('vi-VN')}đ` : '∞'}
+                                Giá: {filters.minPrice ? `${Number(filters.minPrice).toLocaleString('vi-VN')} VND` : '0 VND'}
+                                - {filters.maxPrice ? `${Number(filters.maxPrice).toLocaleString('vi-VN')} VND` : '∞'}
                                 <button
                                     onClick={() => handleFilterChange({ minPrice: '', maxPrice: '' })}
                                     className="ml-1 hover:text-green-900"

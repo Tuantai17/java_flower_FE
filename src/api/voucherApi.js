@@ -297,11 +297,11 @@ const voucherApi = {
         if (voucher.isPercent) {
             let text = `Giảm ${voucher.discountValue}%`;
             if (voucher.maxDiscount) {
-                text += ` (tối đa ${voucher.maxDiscount.toLocaleString('vi-VN')}đ)`;
+                text += ` (tối đa ${voucher.maxDiscount.toLocaleString('vi-VN')} VND)`;
             }
             return text;
         } else {
-            return `Giảm ${voucher.discountValue.toLocaleString('vi-VN')}đ`;
+            return `Giảm ${voucher.discountValue.toLocaleString('vi-VN')} VND`;
         }
     },
 
@@ -321,7 +321,7 @@ const voucherApi = {
         if (orderTotal < voucher.minOrderValue) {
             return {
                 canUse: false,
-                message: `Đơn hàng tối thiểu ${voucher.minOrderValue.toLocaleString('vi-VN')}đ`
+                message: `Đơn hàng tối thiểu ${voucher.minOrderValue.toLocaleString('vi-VN')} VND`
             };
         }
         return { canUse: true, message: 'Có thể sử dụng' };

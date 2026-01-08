@@ -13,13 +13,16 @@ import {
     ArrowRightOnRectangleIcon,
     Cog6ToothIcon,
     ShoppingCartIcon,
-    CheckCircleIcon
+    CheckCircleIcon,
+    BellIcon,
+    TicketIcon,
 } from '@heroicons/react/24/outline';
 import { UserCircleIcon as UserCircleSolidIcon } from '@heroicons/react/24/solid';
 import categoryApi from '../../api/categoryApi';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import CartIcon from './CartIcon';
+import ticketWebSocketService from '../../services/ticketWebSocketService';
 
 const Header = () => {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -30,8 +33,12 @@ const Header = () => {
     const [mobileOpenCategory, setMobileOpenCategory] = useState(null);
     const [showAccountDropdown, setShowAccountDropdown] = useState(false);
     const [showLoginSuccess, setShowLoginSuccess] = useState(false);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     const accountDropdownRef = useRef(null);
+    const notificationRef = useRef(null);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -64,10 +71,34 @@ const Header = () => {
             if (accountDropdownRef.current && !accountDropdownRef.current.contains(event.target)) {
                 setShowAccountDropdown(false);
             }
+            if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+                setShowNotifications(false);
+            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // WebSocket realtime notifications for logged-in users
+    useEffect(() => {
+        if (!user?.id) return;
+
+        // Subscribe to user notifications
+        ticketWebSocketService.subscribeToUserNotifications(user.id, (notification) => {
+            console.log('🔔 User notification received:', notification);
+            const newNotif = {
+                id: Date.now(),
+                type: notification.type,
+                message: notification.title,
+                description: notification.content,
+                url: notification.url,
+                time: 'Vừa xong',
+                unread: true,
+            };
+            setNotifications(prev => [newNotif, ...prev.slice(0, 9)]);
+            setUnreadCount(prev => prev + 1);
+        });
+    }, [user?.id]);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -95,6 +126,24 @@ const Header = () => {
         logout();
         setShowAccountDropdown(false);
         navigate('/');
+    };
+
+    // Handle notification click
+    const handleNotificationClick = (notif) => {
+        setNotifications(prev => prev.map(n => 
+            n.id === notif.id ? { ...n, unread: false } : n
+        ));
+        setUnreadCount(prev => Math.max(0, prev - (notif.unread ? 1 : 0)));
+        if (notif.url) {
+            navigate(notif.url);
+        }
+        setShowNotifications(false);
+    };
+
+    // Mark all notifications as read
+    const handleMarkAllRead = () => {
+        setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+        setUnreadCount(0);
     };
 
     // Kiểm tra category đang active
@@ -137,6 +186,9 @@ const Header = () => {
                         <span>HOTLINE: <strong>1900 633 045</strong> | 0865 160 360</span>
                     </div>
                     <div className="hidden md:flex items-center gap-6">
+                        <Link to="/contact" className="hover:text-pink-200 transition-colors">
+                            Liên hệ
+                        </Link>
                         <Link to="/cart" className="hover:text-pink-200 transition-colors">
                             Giỏ hàng
                         </Link>
@@ -179,6 +231,90 @@ const Header = () => {
 
                     {/* Icons */}
                     <div className="flex items-center gap-3">
+                        {/* Notification Bell - Only for logged in users */}
+                        {user && (
+                            <div className="hidden lg:block relative" ref={notificationRef}>
+                                <button
+                                    onClick={() => setShowNotifications(!showNotifications)}
+                                    className="relative p-2 hover:bg-pink-50 rounded-full transition-colors"
+                                >
+                                    <BellIcon className="h-6 w-6 text-gray-700" />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
+                                            {unreadCount > 9 ? '9+' : unreadCount}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {/* Notification Dropdown */}
+                                {showNotifications && (
+                                    <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-fade-in">
+                                        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-rose-50 to-pink-50">
+                                            <h3 className="font-semibold text-gray-800">
+                                                Thông báo
+                                                {unreadCount > 0 && (
+                                                    <span className="ml-2 px-2 py-0.5 bg-rose-500 text-white text-xs rounded-full">
+                                                        {unreadCount} mới
+                                                    </span>
+                                                )}
+                                            </h3>
+                                            <button 
+                                                onClick={handleMarkAllRead}
+                                                className="text-sm text-rose-600 hover:text-rose-700"
+                                            >
+                                                Đọc tất cả
+                                            </button>
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto">
+                                            {notifications.length === 0 ? (
+                                                <div className="py-8 text-center text-gray-500">
+                                                    <BellIcon className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                                                    <p>Không có thông báo</p>
+                                                </div>
+                                            ) : (
+                                                notifications.map((notif) => (
+                                                    <div
+                                                        key={notif.id}
+                                                        onClick={() => handleNotificationClick(notif)}
+                                                        className={`px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 flex items-start gap-3 ${
+                                                            notif.unread ? 'bg-rose-50/50' : ''
+                                                        }`}
+                                                    >
+                                                        <div className="flex-shrink-0 mt-0.5">
+                                                            <TicketIcon className="h-5 w-5 text-rose-500" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-sm ${notif.unread ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+                                                                {notif.message}
+                                                            </p>
+                                                            {notif.description && (
+                                                                <p className="text-xs text-gray-500 mt-0.5 truncate">
+                                                                    {notif.description}
+                                                                </p>
+                                                            )}
+                                                            <p className="text-xs text-gray-400 mt-1">{notif.time}</p>
+                                                        </div>
+                                                        {notif.unread && (
+                                                            <div className="w-2 h-2 bg-rose-500 rounded-full flex-shrink-0 mt-2" />
+                                                        )}
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                        <div className="px-4 py-3 bg-gray-50 text-center border-t">
+                                            <Link 
+                                                to="/notifications" 
+                                                onClick={() => setShowNotifications(false)}
+                                                className="text-sm text-rose-600 hover:text-rose-700"
+                                            >
+                                                Xem tất cả thông báo
+                                            </Link>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* User Icon với Dropdown - Desktop */}
                         <div className="hidden lg:block relative" ref={accountDropdownRef}>
                             <button

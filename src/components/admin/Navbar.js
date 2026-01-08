@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     MagnifyingGlassIcon,
@@ -8,17 +8,126 @@ import {
     UserCircleIcon,
     Cog6ToothIcon,
     ArrowLeftOnRectangleIcon,
+    TicketIcon,
+    ShoppingBagIcon,
+    ExclamationTriangleIcon,
+    UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import { useAdminAuth } from '../../context/AdminAuthContext';
+import ticketWebSocketService from '../../services/ticketWebSocketService';
+import { getUnreadNotifications, getUnreadCount, markAllAsRead, markAsRead } from '../../api/notificationApi';
 
 const Navbar = ({ onMenuToggle }) => {
     const [showDropdown, setShowDropdown] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [loading, setLoading] = useState(false);
+    
+    const notificationRef = useRef(null);
     const location = useLocation();
     const navigate = useNavigate();
 
     // Lấy thông tin admin từ context
     const { admin, logout, isAuthenticated } = useAdminAuth();
+
+    // Fetch notifications from API on mount
+    useEffect(() => {
+        if (isAuthenticated) {
+            loadNotifications();
+            loadUnreadCount();
+        }
+    }, [isAuthenticated]);
+
+    // Subscribe to realtime notifications
+    useEffect(() => {
+        if (!isAuthenticated) return;
+
+        // Subscribe to admin ticket and order notifications
+        ticketWebSocketService.subscribeToAdminNotifications(
+            // On new ticket
+            (notification) => {
+                console.log('🎫 New ticket notification:', notification);
+                const newNotif = {
+                    id: notification.id || Date.now(),
+                    type: notification.type,
+                    title: notification.title,
+                    content: notification.content,
+                    url: notification.url,
+                    createdAt: new Date().toISOString(),
+                    isRead: false,
+                };
+                setNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+                setUnreadCount(prev => prev + 1);
+            },
+            // On new message
+            (notification) => {
+                console.log('💬 New message notification:', notification);
+                const newNotif = {
+                    id: notification.id || Date.now(),
+                    type: notification.type,
+                    title: notification.title,
+                    content: notification.content,
+                    url: notification.url,
+                    createdAt: new Date().toISOString(),
+                    isRead: false,
+                };
+                setNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+                setUnreadCount(prev => prev + 1);
+            },
+            // On new order / order update
+            (notification) => {
+                console.log('🛒 New order notification:', notification);
+                const newNotif = {
+                    id: notification.id || Date.now(),
+                    type: notification.type,
+                    title: notification.title,
+                    content: notification.content,
+                    url: notification.url,
+                    createdAt: new Date().toISOString(),
+                    isRead: false,
+                };
+                setNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+                setUnreadCount(prev => prev + 1);
+            }
+        );
+    }, [isAuthenticated]);
+
+    // Click outside handler
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+                setShowNotifications(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const loadNotifications = async () => {
+        try {
+            setLoading(true);
+            const response = await getUnreadNotifications();
+            if (response.success && Array.isArray(response.data)) {
+                setNotifications(response.data);
+            }
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadUnreadCount = async () => {
+        try {
+            const response = await getUnreadCount();
+            if (response.success && response.data) {
+                setUnreadCount(response.data.unreadCount || 0);
+            }
+        } catch (error) {
+            console.error('Error loading unread count:', error);
+        }
+    };
 
     // Get current page title
     const getPageTitle = () => {
@@ -36,24 +145,18 @@ const Navbar = ({ onMenuToggle }) => {
             '/admin/vouchers': 'Quản lý Voucher',
             '/admin/stock': 'Quản lý Tồn kho',
             '/admin/reviews': 'Quản lý Đánh giá',
+            '/admin/tickets': 'Quản lý Ticket',
         };
 
-        // Check for dynamic routes first
         if (location.pathname.includes('/edit/')) {
             if (location.pathname.includes('products')) return 'Chỉnh sửa sản phẩm';
             if (location.pathname.includes('categories')) return 'Chỉnh sửa danh mục';
             if (location.pathname.includes('vouchers')) return 'Chỉnh sửa Voucher';
         }
         
-        // Check for product detail page (e.g., /admin/products/123)
-        if (location.pathname.match(/^\/admin\/products\/\d+$/)) {
-            return 'Chi tiết sản phẩm';
-        }
-
-        // Check for order detail page
-        if (location.pathname.match(/^\/admin\/orders\/\d+$/)) {
-            return 'Chi tiết đơn hàng';
-        }
+        if (location.pathname.match(/^\/admin\/products\/\d+$/)) return 'Chi tiết sản phẩm';
+        if (location.pathname.match(/^\/admin\/orders\/\d+$/)) return 'Chi tiết đơn hàng';
+        if (location.pathname.match(/^\/admin\/tickets\/\d+$/)) return 'Chi tiết Ticket';
 
         for (const [path, title] of Object.entries(paths)) {
             if (location.pathname === path) return title;
@@ -62,7 +165,6 @@ const Navbar = ({ onMenuToggle }) => {
         return 'Admin Panel';
     };
 
-    // Lấy thông tin hiển thị của admin
     const getAdminDisplayInfo = () => {
         if (!admin) {
             return {
@@ -83,33 +185,79 @@ const Navbar = ({ onMenuToggle }) => {
 
     const adminInfo = getAdminDisplayInfo();
 
-    // Xử lý đăng xuất
     const handleLogout = () => {
         logout();
         setShowDropdown(false);
         navigate('/admin/login');
     };
 
-    const notifications = [
-        { id: 1, message: 'Đơn hàng mới #1234', time: '5 phút trước', unread: true },
-        { id: 2, message: 'Sản phẩm sắp hết hàng', time: '1 giờ trước', unread: true },
-        { id: 3, message: 'Khách hàng mới đăng ký', time: '2 giờ trước', unread: false },
-    ];
+    // Handle notification click
+    const handleNotificationClick = async (notif) => {
+        // Mark as read in backend and state
+        if (!notif.isRead) {
+            await markAsRead(notif.id);
+            setNotifications(prev => prev.map(n => 
+                n.id === notif.id ? { ...n, isRead: true } : n
+            ));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+        
+        // Navigate
+        if (notif.url) {
+            navigate(notif.url);
+        }
+        setShowNotifications(false);
+    };
+
+    // Mark all as read
+    const handleMarkAllRead = async () => {
+        await markAllAsRead();
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+    };
+
+    // Get icon for notification type
+    const getNotificationIcon = (type) => {
+        switch (type) {
+            case 'TICKET_NEW':
+            case 'TICKET_MESSAGE':
+                return <TicketIcon className="h-5 w-5 text-pink-500" />;
+            case 'ORDER_NEW':
+            case 'ORDER_STATUS':
+                return <ShoppingBagIcon className="h-5 w-5 text-blue-500" />;
+            case 'STOCK_LOW':
+                return <ExclamationTriangleIcon className="h-5 w-5 text-orange-500" />;
+            case 'USER_NEW':
+                return <UserPlusIcon className="h-5 w-5 text-green-500" />;
+            default:
+                return <BellIcon className="h-5 w-5 text-gray-500" />;
+        }
+    };
+
+    // Format time
+    const formatTime = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diff = now - date;
+        
+        if (diff < 60000) return 'Vừa xong';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)} phút trước`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)} giờ trước`;
+        return date.toLocaleDateString('vi-VN');
+    };
 
     return (
         <header className="sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between gap-4">
                 {/* Left Section */}
                 <div className="flex items-center gap-4">
-                    {/* Mobile Menu Toggle */}
                     <button
                         onClick={onMenuToggle}
                         className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                         <Bars3Icon className="h-6 w-6 text-gray-600" />
                     </button>
-
-                    {/* Page Title */}
                     <h1 className="text-xl font-display font-semibold text-gray-800">
                         {getPageTitle()}
                     </h1>
@@ -128,37 +276,88 @@ const Navbar = ({ onMenuToggle }) => {
                     </div>
 
                     {/* Notifications */}
-                    <div className="relative">
+                    <div className="relative" ref={notificationRef}>
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
                             className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
                         >
                             <BellIcon className="h-6 w-6 text-gray-600" />
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1 animate-pulse">
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                </span>
+                            )}
                         </button>
 
                         {showNotifications && (
-                            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
-                                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                                    <h3 className="font-semibold text-gray-800">Thông báo</h3>
-                                    <button className="text-sm text-pink-600 hover:text-pink-700">
-                                        Đọc tất cả
-                                    </button>
+                            <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-pink-50 to-rose-50">
+                                    <h3 className="font-semibold text-gray-800">
+                                        Thông báo
+                                        {unreadCount > 0 && (
+                                            <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                                                {unreadCount} mới
+                                            </span>
+                                        )}
+                                    </h3>
+                                    {unreadCount > 0 && (
+                                        <button 
+                                            onClick={handleMarkAllRead}
+                                            className="text-sm text-pink-600 hover:text-pink-700"
+                                        >
+                                            Đọc tất cả
+                                        </button>
+                                    )}
                                 </div>
                                 <div className="max-h-80 overflow-y-auto">
-                                    {notifications.map((notif) => (
-                                        <div
-                                            key={notif.id}
-                                            className={`px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 ${notif.unread ? 'bg-pink-50/50' : ''
-                                                }`}
-                                        >
-                                            <p className="text-sm text-gray-700">{notif.message}</p>
-                                            <p className="text-xs text-gray-400 mt-1">{notif.time}</p>
+                                    {loading ? (
+                                        <div className="py-8 text-center">
+                                            <div className="animate-spin h-8 w-8 border-2 border-pink-500 border-t-transparent rounded-full mx-auto mb-2" />
+                                            <p className="text-gray-500 text-sm">Đang tải...</p>
                                         </div>
-                                    ))}
+                                    ) : notifications.length === 0 ? (
+                                        <div className="py-8 text-center text-gray-500">
+                                            <BellIcon className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                                            <p>Không có thông báo mới</p>
+                                        </div>
+                                    ) : (
+                                        notifications.map((notif) => (
+                                            <div
+                                                key={notif.id}
+                                                onClick={() => handleNotificationClick(notif)}
+                                                className={`px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 flex items-start gap-3 transition-colors ${
+                                                    !notif.isRead ? 'bg-pink-50/50' : ''
+                                                }`}
+                                            >
+                                                <div className="flex-shrink-0 mt-0.5">
+                                                    {getNotificationIcon(notif.type)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={`text-sm ${!notif.isRead ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+                                                        {notif.title}
+                                                    </p>
+                                                    {notif.content && (
+                                                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                                                            {notif.content}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        {formatTime(notif.createdAt)}
+                                                    </p>
+                                                </div>
+                                                {!notif.isRead && (
+                                                    <div className="w-2 h-2 bg-pink-500 rounded-full flex-shrink-0 mt-2" />
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                                 <div className="px-4 py-3 bg-gray-50 text-center">
-                                    <Link to="/admin/notifications" className="text-sm text-pink-600 hover:text-pink-700">
+                                    <Link 
+                                        to="/admin/notifications" 
+                                        onClick={() => setShowNotifications(false)}
+                                        className="text-sm text-pink-600 hover:text-pink-700"
+                                    >
                                         Xem tất cả thông báo
                                     </Link>
                                 </div>
@@ -172,7 +371,6 @@ const Navbar = ({ onMenuToggle }) => {
                             onClick={() => setShowDropdown(!showDropdown)}
                             className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
                         >
-                            {/* Avatar */}
                             {adminInfo.avatar ? (
                                 <img
                                     src={adminInfo.avatar}
@@ -238,4 +436,3 @@ const Navbar = ({ onMenuToggle }) => {
 };
 
 export default Navbar;
-

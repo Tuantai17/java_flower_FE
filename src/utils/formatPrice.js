@@ -4,12 +4,11 @@
  * @returns {string} Formatted price string
  */
 export const formatPrice = (price) => {
-    if (price === null || price === undefined) return '0₫';
+    if (price === null || price === undefined) return '0 VND';
 
-    return new Intl.NumberFormat('vi-VN', {
-        style: 'currency',
-        currency: 'VND',
-    }).format(price);
+    // Format number with thousand separators and add VND suffix
+    const formatted = new Intl.NumberFormat('vi-VN').format(price);
+    return `${formatted} VND`;
 };
 
 /**

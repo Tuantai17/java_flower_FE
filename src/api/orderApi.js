@@ -22,15 +22,18 @@ import axiosInstance from "./axiosConfig";
 // ====================
 
 /**
- * Order Status Constants (match với backend enum)
+ * Order Status Constants (match với backend enum OrderStatus.java)
+ * QUAN TRỌNG: Phải đồng bộ với backend enum!
  */
 export const ORDER_STATUS = {
-  PENDING: "PENDING", // Chờ xác nhận
-  CONFIRMED: "CONFIRMED", // Đã xác nhận
-  PROCESSING: "PROCESSING", // Đang xử lý
-  DELIVERING: "DELIVERING", // Đang giao hàng
-  COMPLETED: "COMPLETED", // Hoàn thành
-  CANCELLED: "CANCELLED", // Đã hủy
+  PENDING: "PENDING",         // Chờ xác nhận
+  CONFIRMED: "CONFIRMED",     // Đã xác nhận  
+  PROCESSING: "PROCESSING",   // Đang xử lý
+  SHIPPING: "SHIPPING",       // Đang giao hàng (backend: SHIPPING)
+  DELIVERED: "DELIVERED",     // Đã giao hàng
+  COMPLETED: "COMPLETED",     // Hoàn thành
+  CANCELLED: "CANCELLED",     // Đã hủy
+  REFUNDED: "REFUNDED",       // Đã hoàn tiền
 };
 
 /**
@@ -133,9 +136,11 @@ export const formatOrderStatus = (status) => {
     [ORDER_STATUS.PENDING]: "Chờ xác nhận",
     [ORDER_STATUS.CONFIRMED]: "Đã xác nhận",
     [ORDER_STATUS.PROCESSING]: "Đang xử lý",
-    [ORDER_STATUS.DELIVERING]: "Đang giao hàng",
+    [ORDER_STATUS.SHIPPING]: "Đang giao hàng",
+    [ORDER_STATUS.DELIVERED]: "Đã giao hàng",
     [ORDER_STATUS.COMPLETED]: "Hoàn thành",
     [ORDER_STATUS.CANCELLED]: "Đã hủy",
+    [ORDER_STATUS.REFUNDED]: "Đã hoàn tiền",
   };
   return statusMap[status] || status;
 };
@@ -161,9 +166,11 @@ export const getStatusColor = (status) => {
     [ORDER_STATUS.PENDING]: "bg-yellow-100 text-yellow-700",
     [ORDER_STATUS.CONFIRMED]: "bg-blue-100 text-blue-700",
     [ORDER_STATUS.PROCESSING]: "bg-purple-100 text-purple-700",
-    [ORDER_STATUS.DELIVERING]: "bg-indigo-100 text-indigo-700",
+    [ORDER_STATUS.SHIPPING]: "bg-indigo-100 text-indigo-700",
+    [ORDER_STATUS.DELIVERED]: "bg-cyan-100 text-cyan-700",
     [ORDER_STATUS.COMPLETED]: "bg-green-100 text-green-700",
     [ORDER_STATUS.CANCELLED]: "bg-red-100 text-red-700",
+    [ORDER_STATUS.REFUNDED]: "bg-orange-100 text-orange-700",
   };
   return colorMap[status] || "bg-gray-100 text-gray-700";
 };

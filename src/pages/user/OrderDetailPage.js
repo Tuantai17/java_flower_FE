@@ -426,7 +426,7 @@ const OrderTimeline = ({ status }) => {
         { key: ORDER_STATUS.PENDING, label: 'Chờ xác nhận', icon: ClockIcon },
         { key: ORDER_STATUS.CONFIRMED, label: 'Đã xác nhận', icon: CheckCircleIcon },
         { key: ORDER_STATUS.PROCESSING, label: 'Đang xử lý', icon: ClockIcon },
-        { key: ORDER_STATUS.DELIVERING, label: 'Đang giao', icon: TruckIcon },
+        { key: ORDER_STATUS.SHIPPING, label: 'Đang giao', icon: TruckIcon },
         { key: ORDER_STATUS.COMPLETED, label: 'Hoàn thành', icon: CheckCircleIcon },
     ];
 
@@ -517,7 +517,7 @@ const getStatusInfo = (status) => {
             label: 'Đang xử lý',
             badgeClass: 'bg-purple-100 text-purple-700',
         },
-        [ORDER_STATUS.DELIVERING]: {
+        [ORDER_STATUS.SHIPPING]: {
             label: 'Đang giao hàng',
             badgeClass: 'bg-indigo-100 text-indigo-700',
         },

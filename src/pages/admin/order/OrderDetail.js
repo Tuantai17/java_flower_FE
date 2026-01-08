@@ -310,7 +310,8 @@ const StatusTimeline = ({ status }) => {
         { key: ORDER_STATUS.PENDING, label: 'Chờ xác nhận' },
         { key: ORDER_STATUS.CONFIRMED, label: 'Đã xác nhận' },
         { key: ORDER_STATUS.PROCESSING, label: 'Đang xử lý' },
-        { key: ORDER_STATUS.DELIVERING, label: 'Đang giao' },
+        { key: ORDER_STATUS.SHIPPING, label: 'Đang giao' },
+        { key: ORDER_STATUS.DELIVERED, label: 'Đã giao' },
         { key: ORDER_STATUS.COMPLETED, label: 'Hoàn thành' },
     ];
 
@@ -329,14 +330,14 @@ const StatusTimeline = ({ status }) => {
     }
 
     return (
-        <div className="flex items-center">
+        <div className="flex items-center overflow-x-auto pb-2">
             {steps.map((step, index) => {
                 const isCompleted = index <= currentIndex;
                 const isCurrent = index === currentIndex;
 
                 return (
                     <React.Fragment key={step.key}>
-                        <div className="flex flex-col items-center">
+                        <div className="flex flex-col items-center flex-shrink-0">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCompleted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
                                 }`}>
                                 {isCompleted ? (
@@ -345,13 +346,13 @@ const StatusTimeline = ({ status }) => {
                                     <span className="text-sm font-medium">{index + 1}</span>
                                 )}
                             </div>
-                            <p className={`text-xs mt-2 text-center ${isCurrent ? 'font-semibold text-green-600' : 'text-gray-500'
+                            <p className={`text-xs mt-2 text-center whitespace-nowrap ${isCurrent ? 'font-semibold text-green-600' : 'text-gray-500'
                                 }`}>
                                 {step.label}
                             </p>
                         </div>
                         {index < steps.length - 1 && (
-                            <div className={`flex-1 h-1 mx-2 rounded ${index < currentIndex ? 'bg-green-500' : 'bg-gray-200'
+                            <div className={`flex-1 h-1 mx-2 rounded min-w-[20px] ${index < currentIndex ? 'bg-green-500' : 'bg-gray-200'
                                 }`} />
                         )}
                     </React.Fragment>
@@ -365,12 +366,14 @@ const StatusTimeline = ({ status }) => {
  * Status Action Buttons
  */
 const StatusActions = ({ currentStatus, onUpdate, isUpdating }) => {
+    // Flow trạng thái đơn hàng theo backend
     const getNextStatuses = (current) => {
         const flow = {
             [ORDER_STATUS.PENDING]: [ORDER_STATUS.CONFIRMED, ORDER_STATUS.CANCELLED],
             [ORDER_STATUS.CONFIRMED]: [ORDER_STATUS.PROCESSING, ORDER_STATUS.CANCELLED],
-            [ORDER_STATUS.PROCESSING]: [ORDER_STATUS.DELIVERING],
-            [ORDER_STATUS.DELIVERING]: [ORDER_STATUS.COMPLETED],
+            [ORDER_STATUS.PROCESSING]: [ORDER_STATUS.SHIPPING, ORDER_STATUS.CANCELLED],
+            [ORDER_STATUS.SHIPPING]: [ORDER_STATUS.DELIVERED],
+            [ORDER_STATUS.DELIVERED]: [ORDER_STATUS.COMPLETED],
         };
         return flow[current] || [];
     };
@@ -380,7 +383,8 @@ const StatusActions = ({ currentStatus, onUpdate, isUpdating }) => {
     const buttonStyles = {
         [ORDER_STATUS.CONFIRMED]: 'bg-blue-500 hover:bg-blue-600 text-white',
         [ORDER_STATUS.PROCESSING]: 'bg-purple-500 hover:bg-purple-600 text-white',
-        [ORDER_STATUS.DELIVERING]: 'bg-indigo-500 hover:bg-indigo-600 text-white',
+        [ORDER_STATUS.SHIPPING]: 'bg-indigo-500 hover:bg-indigo-600 text-white',
+        [ORDER_STATUS.DELIVERED]: 'bg-cyan-500 hover:bg-cyan-600 text-white',
         [ORDER_STATUS.COMPLETED]: 'bg-green-500 hover:bg-green-600 text-white',
         [ORDER_STATUS.CANCELLED]: 'bg-red-500 hover:bg-red-600 text-white',
     };
@@ -465,9 +469,11 @@ const getStatusLabel = (status) => {
         [ORDER_STATUS.PENDING]: 'Chờ xác nhận',
         [ORDER_STATUS.CONFIRMED]: 'Xác nhận đơn',
         [ORDER_STATUS.PROCESSING]: 'Bắt đầu xử lý',
-        [ORDER_STATUS.DELIVERING]: 'Giao hàng',
+        [ORDER_STATUS.SHIPPING]: 'Giao hàng',
+        [ORDER_STATUS.DELIVERED]: 'Đã giao',
         [ORDER_STATUS.COMPLETED]: 'Hoàn thành',
         [ORDER_STATUS.CANCELLED]: 'Hủy đơn',
+        [ORDER_STATUS.REFUNDED]: 'Hoàn tiền',
     };
     return labels[status] || status;
 };

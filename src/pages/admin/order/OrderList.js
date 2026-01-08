@@ -140,7 +140,7 @@ const OrderList = () => {
                             <option value={ORDER_STATUS.PENDING}>Chờ xác nhận</option>
                             <option value={ORDER_STATUS.CONFIRMED}>Đã xác nhận</option>
                             <option value={ORDER_STATUS.PROCESSING}>Đang xử lý</option>
-                            <option value={ORDER_STATUS.DELIVERING}>Đang giao</option>
+                            <option value={ORDER_STATUS.SHIPPING}>Đang giao</option>
                             <option value={ORDER_STATUS.COMPLETED}>Hoàn thành</option>
                             <option value={ORDER_STATUS.CANCELLED}>Đã hủy</option>
                         </select>
@@ -339,7 +339,7 @@ const StatusDropdown = ({ currentStatus, onChangeStatus, isUpdating }) => {
             <option value={ORDER_STATUS.PENDING}>⏳ Chờ xác nhận</option>
             <option value={ORDER_STATUS.CONFIRMED}>✅ Đã xác nhận</option>
             <option value={ORDER_STATUS.PROCESSING}>🔄 Đang xử lý</option>
-            <option value={ORDER_STATUS.DELIVERING}>🚚 Đang giao</option>
+            <option value={ORDER_STATUS.SHIPPING}>🚚 Đang giao</option>
             <option value={ORDER_STATUS.COMPLETED}>✔️ Hoàn thành</option>
             <option value={ORDER_STATUS.CANCELLED}>❌ Đã hủy</option>
         </select>
@@ -367,7 +367,7 @@ const getStatusInfo = (status) => {
             badgeClass: 'bg-purple-100 text-purple-700',
             bgClass: 'bg-purple-50 text-purple-700',
         },
-        [ORDER_STATUS.DELIVERING]: {
+        [ORDER_STATUS.SHIPPING]: {
             label: 'Đang giao',
             icon: <TruckIcon className="h-4 w-4" />,
             badgeClass: 'bg-indigo-100 text-indigo-700',

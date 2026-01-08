@@ -33,6 +33,9 @@ import MyVouchersPage from './pages/user/MyVouchersPage';
 import MyOrdersPage from './pages/user/MyOrdersPage';
 import OrderDetailPage from './pages/user/OrderDetailPage';
 import PaymentResultPage from './pages/user/PaymentResultPage';
+import MyTicketsPage from './pages/user/MyTicketsPage';
+import TicketDetailPage from './pages/user/TicketDetailPage';
+import UserNotificationsPage from './pages/user/UserNotificationsPage';
 
 
 // AUTH Pages (User)
@@ -61,6 +64,11 @@ import AnalyticsPage from './pages/admin/analytics';
 import SettingsPage from './pages/admin/settings';
 import { StockList } from './pages/admin/stock';
 import { CustomerList } from './pages/admin/customer';
+import BannerList from './pages/admin/banner/BannerList';
+import BannerForm from './pages/admin/banner/BannerForm';
+import TicketList from './pages/admin/ticket/TicketList';
+import TicketDetail from './pages/admin/ticket/TicketDetail';
+import NotificationsPage from './pages/admin/NotificationsPage';
 
 // Global Components
 import GlobalNotification from './components/common/GlobalNotification';
@@ -89,6 +97,8 @@ function App() {
                   <Route path="search" element={<SearchResultPage />} />
                   <Route path="about" element={<AboutPage />} />
                   <Route path="contact" element={<ContactPage />} />
+                  <Route path="my-tickets" element={<MyTicketsPage />} />
+                  <Route path="tickets/:id" element={<TicketDetailPage />} />
                   <Route path="vouchers" element={<VoucherPage />} />
                   <Route path="my-vouchers" element={<MyVouchersPage />} />
 
@@ -97,6 +107,7 @@ function App() {
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="profile/orders" element={<MyOrdersPage />} />
                   <Route path="profile/orders/:id" element={<OrderDetailPage />} />
+                  <Route path="notifications" element={<UserNotificationsPage />} />
 
                   {/* CART & CHECKOUT */}
                   <Route path="cart" element={<CartPage />} />
@@ -169,6 +180,18 @@ function App() {
 
                   {/* ANALYTICS */}
                   <Route path="analytics" element={<AnalyticsPage />} />
+
+                  {/* BANNERS */}
+                  <Route path="banners" element={<BannerList />} />
+                  <Route path="banners/create" element={<BannerForm />} />
+                  <Route path="banners/edit/:id" element={<BannerForm />} />
+
+                  {/* TICKETS */}
+                  <Route path="tickets" element={<TicketList />} />
+                  <Route path="tickets/:id" element={<TicketDetail />} />
+
+                  {/* NOTIFICATIONS */}
+                  <Route path="notifications" element={<NotificationsPage />} />
 
                   {/* SETTINGS */}
                   <Route path="settings" element={<SettingsPage />} />

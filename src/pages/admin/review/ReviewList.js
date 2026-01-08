@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     StarIcon,
     CheckCircleIcon,
@@ -14,6 +14,7 @@ import reviewApi, {
     REVIEW_STATUS_LABELS,
     REVIEW_STATUS_COLORS,
 } from '../../../api/reviewApi';
+import ticketWebSocketService from '../../../services/ticketWebSocketService';
 
 /**
  * ========================================
@@ -43,12 +44,8 @@ const ReviewList = () => {
         totalElements: 0,
     });
 
-    // Fetch reviews
-    useEffect(() => {
-        fetchReviews();
-    }, [filters.status, filters.page]);
-
-    const fetchReviews = async () => {
+    // Fetch reviews - wrapped in useCallback for WebSocket handler
+    const fetchReviews = useCallback(async () => {
         try {
             setLoading(true);
             const params = {
@@ -73,7 +70,38 @@ const ReviewList = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filters.page, filters.size, filters.status]);
+
+    // Fetch reviews on filter change
+    useEffect(() => {
+        fetchReviews();
+    }, [fetchReviews]);
+
+    // Subscribe to WebSocket for realtime review updates
+    useEffect(() => {
+        const handleReviewNotification = (payload) => {
+            console.log('⭐ Realtime review update received:', payload);
+            
+            // Refresh reviews list when new review or update received
+            if (payload.type === 'REVIEW_NEW' || 
+                payload.type === 'REVIEW_STATUS_CHANGED' ||
+                payload.action === 'REPLY') {
+                fetchReviews();
+            }
+        };
+
+        // Subscribe to admin review notifications
+        ticketWebSocketService.subscribeToAdminNotifications(
+            null, // onNewTicket
+            null, // onNewMessage
+            null, // onNewOrder
+            handleReviewNotification // onNewReview
+        );
+
+        return () => {
+            // Cleanup handled by service
+        };
+    }, [fetchReviews]);
 
     // Handle status update
     const handleUpdateStatus = async (reviewId, status) => {
@@ -385,10 +413,12 @@ const ReplyModal = ({ review, onClose, onSuccess }) => {
         try {
             setLoading(true);
             await reviewApi.adminReplyReview(review.id, reply.trim());
+            alert('Phản hồi đã được gửi thành công! Khách hàng sẽ thấy phản hồi ngay lập tức.');
             onSuccess();
             onClose();
         } catch (error) {
             console.error('Error replying:', error);
+            alert('Không thể gửi phản hồi. Vui lòng thử lại.');
         } finally {
             setLoading(false);
         }

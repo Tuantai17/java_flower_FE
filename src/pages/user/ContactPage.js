@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Breadcrumb from '../../components/user/Breadcrumb';
+import { createTicket } from '../../api/contactApi';
 import {
     PhoneIcon,
     EnvelopeIcon,
     MapPinIcon,
     ClockIcon,
+    CheckCircleIcon,
+    TicketIcon,
 } from '@heroicons/react/24/outline';
 
 const ContactPage = () => {
@@ -16,21 +20,67 @@ const ContactPage = () => {
         message: '',
     });
     const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [ticketCode, setTicketCode] = useState('');
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
+        setError('');
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Handle form submission
-        console.log('Form submitted:', formData);
-        setSubmitted(true);
-        setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+        setLoading(true);
+        setError('');
 
-        // Reset after 3 seconds
-        setTimeout(() => setSubmitted(false), 3000);
+        try {
+            // Map subject to category
+            const categoryMap = {
+                'order': 'ORDER',
+                'support': 'SUPPORT',
+                'feedback': 'FEEDBACK',
+                'partnership': 'PARTNERSHIP',
+                'other': 'OTHER',
+                '': 'OTHER'
+            };
+
+            const requestData = {
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone || null,
+                subject: formData.subject ? getCategoryDisplayName(formData.subject) : 'Liên hệ chung',
+                category: categoryMap[formData.subject] || 'OTHER',
+                message: formData.message,
+            };
+
+            const response = await createTicket(requestData);
+
+            if (response.success) {
+                setTicketCode(response.data.ticketCode);
+                setSubmitted(true);
+                setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+            } else {
+                setError(response.message || 'Có lỗi xảy ra, vui lòng thử lại');
+            }
+        } catch (err) {
+            console.error('Error creating ticket:', err);
+            setError(err.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getCategoryDisplayName = (value) => {
+        const names = {
+            'order': 'Đặt hàng',
+            'support': 'Hỗ trợ',
+            'feedback': 'Góp ý',
+            'partnership': 'Hợp tác',
+            'other': 'Khác'
+        };
+        return names[value] || 'Liên hệ chung';
     };
 
     const contactInfo = [
@@ -110,6 +160,20 @@ const ContactPage = () => {
                             );
                         })}
 
+                        {/* My Tickets Link */}
+                        <Link
+                            to="/my-tickets"
+                            className="flex items-start gap-4 p-6 bg-gradient-to-r from-pink-50 to-rose-50 rounded-2xl border-2 border-pink-200 hover:border-pink-400 transition-all duration-300 group"
+                        >
+                            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <TicketIcon className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-gray-900 mb-1">Ticket của tôi</h3>
+                                <p className="text-gray-600 text-sm">Xem lịch sử và theo dõi yêu cầu hỗ trợ</p>
+                            </div>
+                        </Link>
+
                         {/* Social Media */}
                         <div className="pt-6">
                             <h3 className="font-semibold text-gray-900 mb-4">Theo dõi chúng tôi</h3>
@@ -143,16 +207,44 @@ const ContactPage = () => {
 
                             {submitted ? (
                                 <div className="text-center py-12">
-                                    <div className="text-6xl mb-4">✅</div>
+                                    <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center">
+                                        <CheckCircleIcon className="h-10 w-10 text-white" />
+                                    </div>
                                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
                                         Cảm ơn bạn đã liên hệ!
                                     </h3>
-                                    <p className="text-gray-600">
+                                    <p className="text-gray-600 mb-4">
                                         Chúng tôi sẽ phản hồi sớm nhất có thể.
                                     </p>
+                                    {ticketCode && (
+                                        <div className="bg-pink-50 rounded-xl p-4 inline-block">
+                                            <p className="text-sm text-gray-600 mb-1">Mã ticket của bạn:</p>
+                                            <p className="text-xl font-bold text-pink-600">{ticketCode}</p>
+                                        </div>
+                                    )}
+                                    <div className="mt-6 space-x-4">
+                                        <button
+                                            onClick={() => {
+                                                setSubmitted(false);
+                                                setTicketCode('');
+                                            }}
+                                            className="btn-secondary"
+                                        >
+                                            Gửi yêu cầu khác
+                                        </button>
+                                        <Link to="/my-tickets" className="btn-primary">
+                                            Xem ticket của tôi
+                                        </Link>
+                                    </div>
                                 </div>
                             ) : (
                                 <form onSubmit={handleSubmit} className="space-y-6">
+                                    {error && (
+                                        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+                                            {error}
+                                        </div>
+                                    )}
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -233,8 +325,20 @@ const ContactPage = () => {
                                         />
                                     </div>
 
-                                    <button type="submit" className="btn-primary w-full md:w-auto">
-                                        Gửi Tin Nhắn
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className={`btn-primary w-full md:w-auto ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                    >
+                                        {loading ? (
+                                            <span className="flex items-center gap-2">
+                                                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                </svg>
+                                                Đang gửi...
+                                            </span>
+                                        ) : 'Gửi Tin Nhắn'}
                                     </button>
                                 </form>
                             )}

@@ -300,7 +300,7 @@ const getStatusInfo = (status) => {
             bgColor: 'bg-purple-100',
             badgeClass: 'bg-purple-100 text-purple-700',
         },
-        [ORDER_STATUS.DELIVERING]: {
+        [ORDER_STATUS.SHIPPING]: {
             label: 'Đang giao hàng',
             icon: <TruckIcon className="h-5 w-5 text-indigo-500" />,
             bgColor: 'bg-indigo-100',

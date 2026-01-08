@@ -12,6 +12,7 @@ import {
     TicketIcon,
     ArchiveBoxIcon,
     StarIcon,
+    PhotoIcon,
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
@@ -57,6 +58,11 @@ const Sidebar = () => {
             title: 'Đánh giá',
             path: '/admin/reviews',
             icon: StarIcon,
+        },
+        {
+            title: 'Banner',
+            path: '/admin/banners',
+            icon: PhotoIcon,
         },
         {
             title: 'Thống kê',

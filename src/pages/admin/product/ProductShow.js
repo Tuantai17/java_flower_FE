@@ -118,6 +118,34 @@ const ProductShow = () => {
         fetchReviews();
     }, [fetchReviews]);
 
+    // Subscribe to WebSocket for realtime review updates
+    useEffect(() => {
+        // Import the WebSocket service dynamically to avoid circular deps
+        import('../../../services/ticketWebSocketService').then(({ default: ticketWebSocketService }) => {
+            const handleReviewUpdate = (payload) => {
+                console.log('⭐ Realtime review update on product page:', payload);
+                // Refresh reviews and stats when update received
+                if (payload.type === 'PRODUCT_REVIEW_UPDATE' || 
+                    payload.type === 'REVIEW_NEW' || 
+                    payload.action === 'REPLY' ||
+                    payload.action === 'NEW') {
+                    fetchReviews();
+                    fetchReviewStats();
+                }
+            };
+
+            // Subscribe to product-specific reviews
+            ticketWebSocketService.subscribeToProductReviews(id, handleReviewUpdate);
+            
+            // Also subscribe to admin review updates
+            ticketWebSocketService.subscribeToAdminNotifications(null, null, null, handleReviewUpdate);
+
+            return () => {
+                ticketWebSocketService.unsubscribeFromProductReviews(id);
+            };
+        });
+    }, [id, fetchReviews, fetchReviewStats]);
+
     // Handle approve review
     const handleApprove = async (reviewId) => {
         setActionLoading(reviewId);

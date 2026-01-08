@@ -250,6 +250,13 @@ export const createInitialFormData = (user = null) => {
         district: '',
         province: '',
 
+        // Tọa độ địa lý (từ OSM/Photon autocomplete)
+        addressLine: '', // Địa chỉ đầy đủ từ autocomplete
+        lat: null,
+        lng: null,
+        geoProvider: null,
+        placeId: null,
+
         // Lịch giao hàng
         deliveryDate: '',
         deliveryTime: '',
@@ -283,6 +290,12 @@ export const transformToCheckoutPayload = (formData, appliedVoucher = null) => {
 
         // Full shipping address (cho backend cũ nếu cần)
         shippingAddress: buildFullAddress(formData),
+
+        // Tọa độ địa lý (từ OSM/Photon autocomplete)
+        lat: formData.lat || null,
+        lng: formData.lng || null,
+        geoProvider: formData.geoProvider || null,
+        placeId: formData.placeId || null,
 
         // Lịch giao hàng
         deliveryDate: formData.deliveryDate,
