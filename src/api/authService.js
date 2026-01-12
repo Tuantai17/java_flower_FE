@@ -191,6 +191,39 @@ const authService = {
     return res.data?.data || res.data;
   },
 
+  /**
+   * Đổi mật khẩu (user đã đăng nhập)
+   */
+  changePassword: async ({ currentPassword, newPassword, confirmPassword }) => {
+    const res = await api.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+      confirmPassword
+    });
+    return res.data?.data || res.data;
+  },
+
+  /**
+   * Đổi mật khẩu (admin đã đăng nhập)
+   */
+  changePasswordAdmin: async ({ currentPassword, newPassword, confirmPassword }) => {
+    const adminToken = authService.getAdminToken();
+    if (!adminToken) {
+      throw new Error('Admin chưa đăng nhập');
+    }
+
+    const res = await api.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+      confirmPassword
+    }, {
+      headers: {
+        Authorization: `Bearer ${adminToken}`
+      }
+    });
+    return res.data?.data || res.data;
+  },
+
   // Export TOKEN_KEYS để các module khác dùng
   TOKEN_KEYS,
 };

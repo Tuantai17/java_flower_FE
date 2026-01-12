@@ -36,6 +36,7 @@ import PaymentResultPage from './pages/user/PaymentResultPage';
 import MyTicketsPage from './pages/user/MyTicketsPage';
 import TicketDetailPage from './pages/user/TicketDetailPage';
 import UserNotificationsPage from './pages/user/UserNotificationsPage';
+import ChangePasswordPage from './pages/user/ChangePasswordPage';
 
 
 // AUTH Pages (User)
@@ -69,6 +70,7 @@ import BannerForm from './pages/admin/banner/BannerForm';
 import TicketList from './pages/admin/ticket/TicketList';
 import TicketDetail from './pages/admin/ticket/TicketDetail';
 import NotificationsPage from './pages/admin/NotificationsPage';
+import AdminProfilePage from './pages/admin/profile/AdminProfilePage';
 
 // Global Components
 import GlobalNotification from './components/common/GlobalNotification';
@@ -107,6 +109,7 @@ function App() {
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="profile/orders" element={<MyOrdersPage />} />
                   <Route path="profile/orders/:id" element={<OrderDetailPage />} />
+                  <Route path="change-password" element={<ChangePasswordPage />} />
                   <Route path="notifications" element={<UserNotificationsPage />} />
 
                   {/* CART & CHECKOUT */}
@@ -195,6 +198,9 @@ function App() {
 
                   {/* SETTINGS */}
                   <Route path="settings" element={<SettingsPage />} />
+
+                  {/* PROFILE */}
+                  <Route path="profile" element={<AdminProfilePage />} />
                 </Route>
 
 

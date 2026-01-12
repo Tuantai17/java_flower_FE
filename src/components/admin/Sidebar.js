@@ -69,11 +69,6 @@ const Sidebar = () => {
             path: '/admin/analytics',
             icon: ChartBarIcon,
         },
-        {
-            title: 'Cài đặt',
-            path: '/admin/settings',
-            icon: Cog6ToothIcon,
-        },
     ];
 
     const isActive = (path) => {
@@ -138,30 +133,12 @@ const Sidebar = () => {
                                 <span>Xem website</span>
                             </Link>
                         </li>
-                        <li>
-                            <Link
-                                to="/admin/products/create"
-                                className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
-                            >
-                                <span>➕</span>
-                                <span>Thêm sản phẩm</span>
-                            </Link>
-                        </li>
-                        <li>
-                            <Link
-                                to="/admin/stock"
-                                className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
-                            >
-                                <span>📦</span>
-                                <span>Cập nhật kho</span>
-                            </Link>
-                        </li>
                     </ul>
                 </div>
             </nav>
 
             {/* User Section */}
-            <div className="p-6 border-t border-white/10">
+            {/* <div className="p-6 border-t border-white/10">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
                         A
@@ -175,7 +152,7 @@ const Sidebar = () => {
                     <ArrowLeftOnRectangleIcon className="h-5 w-5" />
                     <span>Đăng xuất</span>
                 </button>
-            </div>
+            </div> */}
         </aside>
     );
 };

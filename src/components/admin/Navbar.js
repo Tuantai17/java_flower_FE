@@ -142,10 +142,12 @@ const Navbar = ({ onMenuToggle }) => {
             '/admin/customers': 'Quản lý khách hàng',
             '/admin/analytics': 'Thống kê',
             '/admin/settings': 'Cài đặt',
+            '/admin/profile': 'Hồ sơ cá nhân',
             '/admin/vouchers': 'Quản lý Voucher',
             '/admin/stock': 'Quản lý Tồn kho',
             '/admin/reviews': 'Quản lý Đánh giá',
             '/admin/tickets': 'Quản lý Ticket',
+            '/admin/notifications': 'Thông báo',
         };
 
         if (location.pathname.includes('/edit/')) {

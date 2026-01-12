@@ -11,43 +11,63 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 const SearchResultPage = () => {
     const [searchParams] = useSearchParams();
     const query = searchParams.get('q') || '';
-    const [products, setProducts] = useState([]);
+    const [allProducts, setAllProducts] = useState([]); // Cache tất cả sản phẩm
+    const [products, setProducts] = useState([]); // Sản phẩm hiển thị (paginated)
     const [loading, setLoading] = useState(true);
-    const [pagination, setPagination] = useState({
-        page: 0,
-        size: 12,
-        totalPages: 0,
-        totalElements: 0,
-    });
+    const [currentPage, setCurrentPage] = useState(0);
+    const pageSize = 12;
     const { addToCart, toggleFavorite, state } = useApp();
 
+    // Fetch khi query thay đổi
     useEffect(() => {
         if (query) {
             fetchSearchResults();
+            setCurrentPage(0); // Reset về trang đầu khi query mới
+        } else {
+            setAllProducts([]);
+            setProducts([]);
+            setLoading(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [query, pagination.page]);
+    }, [query]);
+
+    // Cập nhật sản phẩm hiển thị khi page thay đổi
+    useEffect(() => {
+        const startIndex = currentPage * pageSize;
+        const paginatedProducts = allProducts.slice(startIndex, startIndex + pageSize);
+        setProducts(paginatedProducts);
+    }, [currentPage, allProducts]);
 
     const fetchSearchResults = async () => {
         setLoading(true);
         try {
-            const response = await productApi.search(query, pagination.page, pagination.size);
-            setProducts(response.content || []);
-            setPagination({
-                ...pagination,
-                totalPages: response.totalPages || 1,
-                totalElements: response.totalElements || 0,
-            });
+            // API trả về List<ProductDTO>, không phải Page
+            const response = await productApi.search(query);
+            
+            // Response có thể là: array trực tiếp hoặc { content: [...] } hoặc { data: [...] }
+            let fetchedProducts = [];
+            if (Array.isArray(response)) {
+                fetchedProducts = response;
+            } else if (response?.content) {
+                fetchedProducts = response.content;
+            } else if (response?.data && Array.isArray(response.data)) {
+                fetchedProducts = response.data;
+            }
+            
+            console.log('Search results for "' + query + '":', fetchedProducts.length, 'products');
+            setAllProducts(fetchedProducts);
         } catch (error) {
             console.error('Error searching products:', error);
-            setProducts([]);
+            setAllProducts([]);
         } finally {
             setLoading(false);
         }
     };
 
+    const totalPages = Math.ceil(allProducts.length / pageSize);
+
     const handlePageChange = (page) => {
-        setPagination({ ...pagination, page: page - 1 });
+        setCurrentPage(page - 1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -74,7 +94,7 @@ const SearchResultPage = () => {
                             Tìm kiếm cho: <span className="font-semibold text-pink-600">"{query}"</span>
                             {!loading && (
                                 <span className="ml-2">
-                                    ({pagination.totalElements} kết quả)
+                                    ({allProducts.length} kết quả)
                                 </span>
                             )}
                         </p>
@@ -95,13 +115,15 @@ const SearchResultPage = () => {
                             favorites={state.favorites.map((f) => f.id)}
                         />
 
-                        <Pagination
-                            currentPage={pagination.page + 1}
-                            totalPages={pagination.totalPages}
-                            totalItems={pagination.totalElements}
-                            pageSize={pagination.size}
-                            onPageChange={handlePageChange}
-                        />
+                        {totalPages > 1 && (
+                            <Pagination
+                                currentPage={currentPage + 1}
+                                totalPages={totalPages}
+                                totalItems={allProducts.length}
+                                pageSize={pageSize}
+                                onPageChange={handlePageChange}
+                            />
+                        )}
                     </>
                 ) : (
                     <div className="text-center py-16">

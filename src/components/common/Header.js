@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
     MagnifyingGlassIcon,
@@ -16,9 +16,11 @@ import {
     CheckCircleIcon,
     BellIcon,
     TicketIcon,
+    ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { UserCircleIcon as UserCircleSolidIcon } from '@heroicons/react/24/solid';
 import categoryApi from '../../api/categoryApi';
+import productApi from '../../api/productApi';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import CartIcon from './CartIcon';
@@ -36,6 +38,14 @@ const Header = () => {
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    
+    // Search states
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+    const searchTimeoutRef = useRef(null);
+    const searchInputRef = useRef(null);
+    const searchDropdownRef = useRef(null);
 
     const accountDropdownRef = useRef(null);
     const notificationRef = useRef(null);
@@ -73,6 +83,11 @@ const Header = () => {
             }
             if (notificationRef.current && !notificationRef.current.contains(event.target)) {
                 setShowNotifications(false);
+            }
+            // Đóng search dropdown khi click ra ngoài
+            if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target) &&
+                searchInputRef.current && !searchInputRef.current.contains(event.target)) {
+                setShowSearchDropdown(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -114,12 +129,72 @@ const Header = () => {
         fetchCategories();
     }, []);
 
+    // Debounced search - tìm kiếm sản phẩm realtime
+    const handleSearchInput = useCallback((value) => {
+        setSearchQuery(value);
+        
+        // Clear previous timeout
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+        
+        // Nếu query rỗng, đóng dropdown
+        if (!value.trim()) {
+            setSearchResults([]);
+            setShowSearchDropdown(false);
+            return;
+        }
+        
+        // Debounce 300ms
+        searchTimeoutRef.current = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const response = await productApi.search(value.trim(), 0, 6);
+                const products = response?.content || response || [];
+                setSearchResults(Array.isArray(products) ? products.slice(0, 6) : []);
+                setShowSearchDropdown(true);
+            } catch (error) {
+                console.error('Search error:', error);
+                setSearchResults([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+    }, []);
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const handleSearch = (e) => {
         e.preventDefault();
         if (searchQuery.trim()) {
             navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
             setSearchQuery('');
+            setSearchResults([]);
+            setShowSearchDropdown(false);
         }
+    };
+
+    // Click vào sản phẩm từ dropdown
+    const handleProductClick = (productId) => {
+        navigate(`/product/${productId}`);
+        setSearchQuery('');
+        setSearchResults([]);
+        setShowSearchDropdown(false);
+    };
+
+    // Format giá tiền
+    const formatPrice = (price) => {
+        return new Intl.NumberFormat('vi-VN', { 
+            style: 'currency', 
+            currency: 'VND' 
+        }).format(price);
     };
 
     const handleLogout = () => {
@@ -215,18 +290,94 @@ const Header = () => {
                         </div>
                     </Link>
 
-                    {/* Search Bar - Desktop */}
-                    <form onSubmit={handleSearch} className="hidden lg:flex flex-1 max-w-xl">
-                        <div className="relative w-full">
+                    {/* Search Bar - Desktop với Dropdown */}
+                    <form onSubmit={handleSearch} className="hidden lg:flex flex-1 max-w-xl relative">
+                        <div className="relative w-full" ref={searchInputRef}>
                             <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Tìm kiếm hoa tươi, quà tặng..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => handleSearchInput(e.target.value)}
+                                onFocus={() => searchQuery.trim() && searchResults.length > 0 && setShowSearchDropdown(true)}
                                 className="input-search"
+                                autoComplete="off"
                             />
+                            {isSearching && (
+                                <ArrowPathIcon className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-rose-500 animate-spin" />
+                            )}
                         </div>
+                        
+                        {/* Search Results Dropdown */}
+                        {showSearchDropdown && searchQuery.trim() && (
+                            <div 
+                                ref={searchDropdownRef}
+                                className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-fade-in"
+                            >
+                                {searchResults.length > 0 ? (
+                                    <>
+                                        <div className="px-4 py-2.5 bg-gradient-to-r from-rose-50 to-pink-50 border-b border-gray-100">
+                                            <p className="text-sm text-gray-600">
+                                                Tìm thấy <span className="font-semibold text-rose-600">{searchResults.length}</span> sản phẩm
+                                            </p>
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto">
+                                            {searchResults.map((product) => (
+                                                <button
+                                                    key={product.id}
+                                                    type="button"
+                                                    onClick={() => handleProductClick(product.id)}
+                                                    className="flex items-center gap-4 w-full px-4 py-3 hover:bg-rose-50 transition-colors text-left border-b border-gray-50 last:border-0"
+                                                >
+                                                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                                        {product.images?.[0]?.imageUrl || product.thumbnail || product.image ? (
+                                                            <img 
+                                                                src={product.images?.[0]?.imageUrl || product.thumbnail || product.image} 
+                                                                alt={product.name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-2xl">
+                                                                🌸
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-medium text-gray-800 truncate">{product.name}</p>
+                                                        <p className="text-sm text-gray-500 truncate">{product.category?.name || 'Hoa tươi'}</p>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            {product.discountPrice && product.discountPrice < product.price ? (
+                                                                <>
+                                                                    <span className="text-rose-600 font-semibold">{formatPrice(product.discountPrice)}</span>
+                                                                    <span className="text-gray-400 text-sm line-through">{formatPrice(product.price)}</span>
+                                                                </>
+                                                            ) : (
+                                                                <span className="text-rose-600 font-semibold">{formatPrice(product.price)}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <ChevronRightIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {searchResults.length >= 6 && (
+                                            <button 
+                                                type="submit"
+                                                className="w-full px-4 py-3 text-center text-rose-600 hover:bg-rose-50 font-medium border-t border-gray-100 transition-colors"
+                                            >
+                                                Xem tất cả kết quả →
+                                            </button>
+                                        )}
+                                    </>
+                                ) : searchQuery.trim() && !isSearching ? (
+                                    <div className="px-4 py-8 text-center">
+                                        <MagnifyingGlassIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                                        <p className="text-gray-500">Không tìm thấy sản phẩm nào</p>
+                                        <p className="text-sm text-gray-400 mt-1">Thử tìm với từ khóa khác</p>
+                                    </div>
+                                ) : null}
+                            </div>
+                        )}
                     </form>
 
                     {/* Icons */}
@@ -593,10 +744,55 @@ const Header = () => {
                                 type="text"
                                 placeholder="Tìm kiếm..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => handleSearchInput(e.target.value)}
                                 className="input-search"
+                                autoComplete="off"
                             />
+                            {isSearching && (
+                                <ArrowPathIcon className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-rose-500 animate-spin" />
+                            )}
                         </div>
+                        
+                        {/* Mobile Search Results */}
+                        {showSearchDropdown && searchResults.length > 0 && (
+                            <div className="mt-3 bg-white rounded-xl border border-gray-100 overflow-hidden shadow-lg">
+                                <div className="max-h-60 overflow-y-auto">
+                                    {searchResults.slice(0, 4).map((product) => (
+                                        <button
+                                            key={product.id}
+                                            type="button"
+                                            onClick={() => {
+                                                handleProductClick(product.id);
+                                                setIsMobileMenuOpen(false);
+                                            }}
+                                            className="flex items-center gap-3 w-full px-4 py-3 hover:bg-rose-50 text-left border-b border-gray-50 last:border-0"
+                                        >
+                                            <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                                {product.images?.[0]?.imageUrl || product.thumbnail ? (
+                                                    <img 
+                                                        src={product.images?.[0]?.imageUrl || product.thumbnail} 
+                                                        alt={product.name}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-xl">🌸</div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-gray-800 text-sm truncate">{product.name}</p>
+                                                <p className="text-rose-600 font-semibold text-sm">{formatPrice(product.discountPrice || product.price)}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                                <button 
+                                    type="submit"
+                                    className="w-full px-4 py-2.5 text-center text-rose-600 hover:bg-rose-50 font-medium text-sm border-t border-gray-100"
+                                >
+                                    Xem tất cả kết quả
+                                </button>
+                            </div>
+                        )}
                     </form>
 
                     {/* Mobile Navigation với 2 lớp */}

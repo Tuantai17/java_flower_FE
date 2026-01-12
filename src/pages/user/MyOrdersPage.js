@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import orderApi, { ORDER_STATUS, PAYMENT_METHODS } from '../../api/orderApi';
 import { formatPrice } from '../../utils/formatPrice';
+import CancelOrderModal from '../../components/user/CancelOrderModal';
 import {
     ShoppingBagIcon,
     ClockIcon,
@@ -228,54 +229,49 @@ const OrderCard = ({ order }) => {
 };
 
 /**
- * Cancel Button Component
+ * Cancel Button Component with Reason Modal
  */
 const CancelButton = ({ orderId }) => {
     const [cancelling, setCancelling] = useState(false);
-    const [showConfirm, setShowConfirm] = useState(false);
+    const [showModal, setShowModal] = useState(false);
 
-    const handleCancel = async () => {
+    const handleCancel = async (reason) => {
+        if (!reason.trim()) {
+            alert('Vui lòng chọn hoặc nhập lý do hủy đơn hàng');
+            return;
+        }
+
         setCancelling(true);
         try {
-            await orderApi.cancelOrder(orderId);
+            await orderApi.cancelOrder(orderId, reason.trim());
             window.location.reload();
         } catch (error) {
             console.error('Cancel error:', error);
-            alert('Không thể hủy đơn hàng. Vui lòng thử lại.');
+            alert(error.response?.data?.message || 'Không thể hủy đơn hàng. Vui lòng thử lại.');
         } finally {
             setCancelling(false);
-            setShowConfirm(false);
+            setShowModal(false);
         }
     };
 
-    if (showConfirm) {
-        return (
-            <div className="flex gap-2">
-                <button
-                    onClick={handleCancel}
-                    disabled={cancelling}
-                    className="px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm hover:bg-red-600 disabled:opacity-50"
-                >
-                    {cancelling ? 'Đang hủy...' : 'Xác nhận'}
-                </button>
-                <button
-                    onClick={() => setShowConfirm(false)}
-                    className="px-4 py-2.5 border rounded-xl text-sm hover:bg-gray-50"
-                >
-                    Không
-                </button>
-            </div>
-        );
-    }
-
     return (
-        <button
-            onClick={() => setShowConfirm(true)}
-            className="py-2.5 px-4 border border-gray-300 text-gray-600 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-        >
-            <XCircleIcon className="h-5 w-5" />
-            Hủy
-        </button>
+        <>
+            <button
+                onClick={() => setShowModal(true)}
+                className="py-2.5 px-4 border border-gray-300 text-gray-600 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+            >
+                <XCircleIcon className="h-5 w-5" />
+                Hủy
+            </button>
+
+            <CancelOrderModal
+                isOpen={showModal}
+                orderCode={`#${orderId}`}
+                cancelling={cancelling}
+                onClose={() => setShowModal(false)}
+                onConfirm={handleCancel}
+            />
+        </>
     );
 };
 
