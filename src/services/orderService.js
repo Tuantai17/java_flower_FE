@@ -265,6 +265,7 @@ export const createInitialFormData = (user = null) => {
         note: '',
         voucherCode: '',
         paymentMethod: PAYMENT_METHODS.COD,
+        momoType: 'wallet', // Mặc định: QR/Ví MoMo (ổn định nhất)
     };
 };
 
@@ -305,6 +306,7 @@ export const transformToCheckoutPayload = (formData, appliedVoucher = null) => {
         note: formData.note?.trim() || null,
         voucherCode: appliedVoucher?.code || formData.voucherCode?.trim() || null,
         paymentMethod: formData.paymentMethod,
+        momoType: formData.momoType || 'wallet', // wallet = QR, card = ATM/Visa
 
         // Legacy fields cho backward compatibility
         customerName: formData.senderName?.trim(),

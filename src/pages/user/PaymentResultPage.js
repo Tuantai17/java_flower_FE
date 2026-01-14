@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import axiosInstance from '../../api/axiosConfig';
 import paymentApi, { PAYMENT_STATUS } from '../../api/paymentApi';
 import { formatPrice } from '../../utils/formatPrice';
 import {
@@ -85,6 +86,7 @@ const PaymentResultPage = () => {
     const [loading, setLoading] = useState(true);
     const [paymentResult, setPaymentResult] = useState(null);
     const [orderDetails, setOrderDetails] = useState(null);
+    const [retryingPayment, setRetryingPayment] = useState(false);
 
     // Process payment on mount
     useEffect(() => {
@@ -116,6 +118,18 @@ const PaymentResultPage = () => {
 
                 console.log('📦 Payment result:', result);
 
+                // Lấy thông tin order cho mọi trường hợp (để hiển thị và retry)
+                if (result.orderId) {
+                    try {
+                        const order = await paymentApi.getOrderAfterPayment(result.orderId);
+                        if (order) {
+                            setOrderDetails(order);
+                        }
+                    } catch (e) {
+                        console.warn('Could not fetch order details:', e);
+                    }
+                }
+
                 // Xử lý theo trạng thái
                 if (result.status === PAYMENT_STATUS.SUCCESS) {
                     console.log('✅ Payment successful!');
@@ -132,22 +146,10 @@ const PaymentResultPage = () => {
                         message: 'Thanh toán thành công! Đơn hàng đã được xác nhận.',
                     });
 
-                    // Lấy thông tin order (không block nếu lỗi)
-                    if (result.orderId) {
-                        try {
-                            const order = await paymentApi.getOrderAfterPayment(result.orderId);
-                            if (order) {
-                                setOrderDetails(order);
-                            }
-                        } catch (e) {
-                            // Ignore - order details không bắt buộc
-                        }
-                    }
-
                 } else if (result.status === PAYMENT_STATUS.CANCELLED) {
                     showNotification({
                         type: 'warning',
-                        message: 'Bạn đã hủy giao dịch thanh toán',
+                        message: 'Bạn đã hủy giao dịch thanh toán. Đơn hàng vẫn được lưu, bạn có thể thanh toán lại.',
                     });
                 } else {
                     showNotification({
@@ -169,6 +171,43 @@ const PaymentResultPage = () => {
 
         processPayment();
     }, [location.search, clearCart, showNotification]);
+
+    // Retry payment function
+    const handleRetryPayment = async () => {
+        if (!orderDetails?.id) {
+            showNotification({
+                type: 'error',
+                message: 'Không tìm thấy thông tin đơn hàng để thanh toán lại',
+            });
+            return;
+        }
+
+        setRetryingPayment(true);
+        try {
+            // Gọi API tạo lại payment URL cho order đã có
+            const response = await axiosInstance.post(`/payment/momo/create?orderId=${orderDetails.id}`);
+            const data = response.data;
+            
+            const payUrl = data?.data?.payUrl || data?.payUrl;
+            if (payUrl) {
+                showNotification({
+                    type: 'info',
+                    message: 'Đang chuyển đến trang thanh toán...',
+                });
+                window.location.href = payUrl;
+            } else {
+                throw new Error('Không thể tạo link thanh toán');
+            }
+        } catch (error) {
+            console.error('Retry payment error:', error);
+            showNotification({
+                type: 'error',
+                message: error.response?.data?.message || 'Không thể thanh toán lại. Vui lòng thử lại sau.',
+            });
+        } finally {
+            setRetryingPayment(false);
+        }
+    };
 
     // Loading state
     if (loading) {
@@ -207,6 +246,36 @@ const PaymentResultPage = () => {
                         />
                     )}
 
+                    {/* Order Info for Cancelled/Failed - Show order was created */}
+                    {(status === PAYMENT_STATUS.CANCELLED || status === PAYMENT_STATUS.FAILED) && orderDetails && (
+                        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 text-left">
+                            <h3 className="font-semibold text-orange-800 mb-3">
+                                📦 Đơn hàng chưa thanh toán
+                            </h3>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-orange-600">Mã đơn hàng:</span>
+                                    <span className="font-semibold text-orange-800">
+                                        #{orderDetails.orderCode || orderDetails.order_code || paymentResult?.orderId}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-orange-600">Tổng tiền:</span>
+                                    <span className="font-semibold text-orange-800">
+                                        {formatPrice(orderDetails.finalPrice || orderDetails.final_price || 0)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-orange-600">Trạng thái:</span>
+                                    <span className="font-semibold text-orange-800">Chờ thanh toán</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-orange-600 mt-3">
+                                💡 Đơn hàng vẫn được lưu. Bạn có thể thanh toán lại ngay bây giờ.
+                            </p>
+                        </div>
+                    )}
+
                     {/* Transaction Info */}
                     {paymentResult?.transactionId && (
                         <div className="bg-gray-50 rounded-xl p-4 mb-6 text-sm">
@@ -223,7 +292,10 @@ const PaymentResultPage = () => {
                     <ActionButtons
                         status={status}
                         orderId={paymentResult?.orderId}
+                        orderDetails={orderDetails}
                         navigate={navigate}
+                        onRetryPayment={handleRetryPayment}
+                        retryingPayment={retryingPayment}
                     />
                 </div>
 
@@ -302,11 +374,14 @@ const OrderInfo = ({ result, orderDetails }) => {
 /**
  * Action Buttons
  */
-const ActionButtons = ({ status, orderId, navigate }) => {
+const ActionButtons = ({ status, orderId, orderDetails, navigate, onRetryPayment, retryingPayment }) => {
     const isSuccess = status === PAYMENT_STATUS.SUCCESS;
     const isCancelledOrFailed = status === PAYMENT_STATUS.CANCELLED ||
         status === PAYMENT_STATUS.FAILED ||
         status === PAYMENT_STATUS.EXPIRED;
+
+    // Kiểm tra xem có thể retry payment không (có order details và order chưa thanh toán)
+    const canRetryPayment = isCancelledOrFailed && orderDetails && !orderDetails.isPaid;
 
     return (
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -331,19 +406,42 @@ const ActionButtons = ({ status, orderId, navigate }) => {
 
             {isCancelledOrFailed && (
                 <>
-                    <button
-                        onClick={() => navigate('/checkout')}
-                        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-full hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg"
-                    >
-                        <ArrowPathIcon className="h-5 w-5" />
-                        Thử lại thanh toán
-                    </button>
+                    {canRetryPayment ? (
+                        // Thanh toán lại cho đơn hàng hiện tại
+                        <button
+                            onClick={onRetryPayment}
+                            disabled={retryingPayment}
+                            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-full hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg disabled:opacity-50"
+                        >
+                            {retryingPayment ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Đang xử lý...
+                                </>
+                            ) : (
+                                <>
+                                    <ArrowPathIcon className="h-5 w-5" />
+                                    Thanh toán ngay
+                                </>
+                            )}
+                        </button>
+                    ) : (
+                        // Quay lại checkout để tạo đơn mới
+                        <button
+                            onClick={() => navigate('/checkout')}
+                            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-full hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg"
+                        >
+                            <ArrowPathIcon className="h-5 w-5" />
+                            Thử lại thanh toán
+                        </button>
+                    )}
+                    
                     <Link
-                        to="/cart"
+                        to="/profile/orders"
                         className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-full hover:bg-gray-50 transition-colors font-medium"
                     >
                         <ShoppingBagIcon className="h-5 w-5" />
-                        Quay lại giỏ hàng
+                        Xem đơn hàng của tôi
                     </Link>
                 </>
             )}

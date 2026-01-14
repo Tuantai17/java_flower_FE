@@ -123,7 +123,9 @@ const CheckoutPage = () => {
                             {/* Payment Method */}
                             <PaymentMethodSection
                                 selectedMethod={checkout.formData.paymentMethod}
+                                momoType={checkout.formData.momoType}
                                 onChange={(method) => checkout.setFormFields({ paymentMethod: method })}
+                                onMomoTypeChange={(type) => checkout.setFormFields({ momoType: type })}
                             />
 
                             {/* Note */}
@@ -456,7 +458,7 @@ const DeliveryScheduleSection = memo(({ formData, errors, onChange, timeSlots })
 // PAYMENT METHOD SECTION
 // ========================================
 
-const PaymentMethodSection = memo(({ selectedMethod, onChange }) => {
+const PaymentMethodSection = memo(({ selectedMethod, momoType, onChange, onMomoTypeChange }) => {
     const paymentMethods = [
         {
             id: PAYMENT_METHODS.COD,
@@ -467,7 +469,7 @@ const PaymentMethodSection = memo(({ selectedMethod, onChange }) => {
         },
         {
             id: PAYMENT_METHODS.MOMO,
-            name: 'Ví MoMo',
+            name: 'MoMo',
             description: 'Thanh toán qua ví điện tử MoMo',
             icon: '📱',
             disabled: false,
@@ -488,6 +490,22 @@ const PaymentMethodSection = memo(({ selectedMethod, onChange }) => {
         },
     ];
 
+    // MoMo sub-options
+    const momoOptions = [
+        {
+            id: 'wallet',
+            name: 'Quét mã QR',
+            description: 'Mở app MoMo và quét mã',
+            icon: '📲',
+        },
+        {
+            id: 'card',
+            name: 'Thẻ ATM / Visa / Master',
+            description: 'Thanh toán bằng thẻ ngân hàng',
+            icon: '💳',
+        },
+    ];
+
     return (
         <div className="bg-white rounded-2xl shadow-sm p-6">
             <div className="flex items-center gap-3 mb-6">
@@ -499,36 +517,67 @@ const PaymentMethodSection = memo(({ selectedMethod, onChange }) => {
 
             <div className="space-y-3">
                 {paymentMethods.map((method) => (
-                    <label
-                        key={method.id}
-                        className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedMethod === method.id
-                            ? 'border-rose-500 bg-rose-50'
-                            : 'border-gray-200 hover:border-rose-200'
-                            } ${method.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        <input
-                            type="radio"
-                            name="paymentMethod"
-                            value={method.id}
-                            checked={selectedMethod === method.id}
-                            onChange={() => !method.disabled && onChange(method.id)}
-                            disabled={method.disabled}
-                            className="w-5 h-5 text-rose-500 focus:ring-rose-500"
-                        />
-                        <span className="text-2xl">{method.icon}</span>
-                        <div className="flex-1">
-                            <p className="font-medium text-gray-800">
-                                {method.name}
-                                {method.disabled && (
-                                    <span className="text-xs text-gray-400 ml-2">(Sắp ra mắt)</span>
-                                )}
-                            </p>
-                            <p className="text-sm text-gray-500">{method.description}</p>
-                        </div>
-                        {selectedMethod === method.id && !method.disabled && (
-                            <CheckCircleIcon className="h-6 w-6 text-rose-500" />
+                    <div key={method.id}>
+                        <label
+                            className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedMethod === method.id
+                                ? 'border-rose-500 bg-rose-50'
+                                : 'border-gray-200 hover:border-rose-200'
+                                } ${method.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            <input
+                                type="radio"
+                                name="paymentMethod"
+                                value={method.id}
+                                checked={selectedMethod === method.id}
+                                onChange={() => !method.disabled && onChange(method.id)}
+                                disabled={method.disabled}
+                                className="w-5 h-5 text-rose-500 focus:ring-rose-500"
+                            />
+                            <span className="text-2xl">{method.icon}</span>
+                            <div className="flex-1">
+                                <p className="font-medium text-gray-800">
+                                    {method.name}
+                                    {method.disabled && (
+                                        <span className="text-xs text-gray-400 ml-2">(Sắp ra mắt)</span>
+                                    )}
+                                </p>
+                                <p className="text-sm text-gray-500">{method.description}</p>
+                            </div>
+                            {selectedMethod === method.id && !method.disabled && (
+                                <CheckCircleIcon className="h-6 w-6 text-rose-500" />
+                            )}
+                        </label>
+
+                        {/* MoMo Sub-options */}
+                        {method.id === PAYMENT_METHODS.MOMO && selectedMethod === PAYMENT_METHODS.MOMO && (
+                            <div className="mt-3 ml-12 space-y-2">
+                                {momoOptions.map((option) => (
+                                    <label
+                                        key={option.id}
+                                        className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                            momoType === option.id
+                                                ? 'border-pink-400 bg-pink-50'
+                                                : 'border-gray-200 hover:border-pink-200'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="momoType"
+                                            value={option.id}
+                                            checked={momoType === option.id}
+                                            onChange={() => onMomoTypeChange(option.id)}
+                                            className="w-4 h-4 text-pink-500 focus:ring-pink-500"
+                                        />
+                                        <span className="text-lg">{option.icon}</span>
+                                        <div className="flex-1">
+                                            <p className="font-medium text-gray-700 text-sm">{option.name}</p>
+                                            <p className="text-xs text-gray-500">{option.description}</p>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
                         )}
-                    </label>
+                    </div>
                 ))}
             </div>
 
