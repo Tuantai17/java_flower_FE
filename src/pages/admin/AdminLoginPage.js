@@ -40,7 +40,8 @@ const AdminLoginPage = () => {
 
     } catch (err) {
       console.error('❌ Admin login error:', err);
-      setError(err.message || 'Sai tài khoản hoặc mật khẩu.');
+      const errorMessage = err.response?.data?.message || err.message || 'Sai tài khoản hoặc mật khẩu.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

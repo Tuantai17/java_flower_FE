@@ -59,12 +59,14 @@ export const PAYMENT_STATUS = {
 /**
  * MoMo Payment Types - Các hình thức thanh toán MoMo
  * Theo MoMo API documentation:
- * - WALLET: Quét mã QR bằng app MoMo
- * - CARD: Thanh toán bằng thẻ ATM/Visa/MasterCard qua MoMo
+ * - AUTO (null/undefined): Hiển thị trang chọn phương thức (QR + ATM/Visa) 
+ * - WALLET: Chỉ quét mã QR bằng app MoMo
+ * - CARD: Chỉ thanh toán bằng thẻ ATM/Visa/MasterCard qua MoMo
  */
 export const MOMO_TYPES = {
-  QR: "WALLET", // Quét mã QR MoMo (captureWallet)
-  CARD: "CARD", // Thẻ ATM / Thẻ quốc tế qua MoMo (payWithATM)
+  AUTO: null,      // Hiển thị trang chọn phương thức (payWithMethod) - MẶC ĐỊNH
+  WALLET: "wallet", // Chỉ QR MoMo (captureWallet)
+  CARD: "card",     // Chỉ thẻ ATM/Visa (payWithATM)
 };
 
 // ====================

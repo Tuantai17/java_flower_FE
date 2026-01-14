@@ -19,14 +19,29 @@ const LoginPage = () => {
 
     try {
       const data = await login(formData);
+      console.log('Login response data:', data);
 
-      if (data.user.role === 'ADMIN' || data.user.role === 'STAFF') {
+      if (data.user?.role === 'ADMIN' || data.user?.role === 'STAFF') {
         navigate('/admin/dashboard');
       } else {
         navigate('/');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Đăng nhập thất bại.');
+      console.error('Login error:', err);
+      // Handle different error types
+      if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+        setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.');
+      } else if (err.response?.status === 401) {
+        // Backend trả về AuthResponse với message trực tiếp
+        const errorMessage = err.response?.data?.message || 'Thông tin đăng nhập không chính xác.';
+        setError(errorMessage);
+      } else if (err.response?.status === 403) {
+        setError('Tài khoản của bạn không có quyền truy cập.');
+      } else if (err.response?.status >= 500) {
+        setError('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+      }
     } finally {
       setLoading(false);
     }

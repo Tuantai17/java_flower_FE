@@ -23,17 +23,27 @@ const authService = {
    * Token được lưu vào 'userToken'
    */
   login: async (credentials) => {
-    const res = await api.post('/auth/login', credentials);
-    const responseData = res.data?.data || res.data;
+    console.log('🔐 [Login] Attempting login for:', credentials.identifier);
+    try {
+      const res = await api.post('/auth/login', credentials);
+      console.log('📥 [Login] Response:', res.data);
+      
+      // AuthResponse trả về trực tiếp, không có wrapper data
+      const responseData = res.data;
 
-    if (responseData.token) {
-      // Lưu token cho User
-      localStorage.setItem(TOKEN_KEYS.USER, responseData.token);
-      // Đồng thời lưu vào 'token' để tương thích ngược
-      localStorage.setItem('token', responseData.token);
+      if (responseData.token) {
+        // Lưu token cho User
+        localStorage.setItem(TOKEN_KEYS.USER, responseData.token);
+        // Đồng thời lưu vào 'token' để tương thích ngược
+        localStorage.setItem('token', responseData.token);
+        console.log('💾 [Login] Token saved successfully');
+      }
+
+      return responseData;
+    } catch (error) {
+      console.error('❌ [Login] Error:', error.response?.data || error.message);
+      throw error;
     }
-
-    return responseData;
   },
 
   /**
@@ -134,8 +144,26 @@ const authService = {
    * Đăng ký (User)
    */
   register: async (data) => {
-    const res = await api.post('/auth/register', data);
-    return res.data?.data || res.data;
+    console.log('📝 [Register] Attempting registration for:', data.username);
+    try {
+      const res = await api.post('/auth/register', data);
+      console.log('📥 [Register] Response:', res.data);
+      
+      // AuthResponse trả về trực tiếp
+      const responseData = res.data;
+      
+      // Nếu có token thì lưu (tự động đăng nhập sau đăng ký)
+      if (responseData.token) {
+        localStorage.setItem(TOKEN_KEYS.USER, responseData.token);
+        localStorage.setItem('token', responseData.token);
+        console.log('💾 [Register] Token saved successfully');
+      }
+      
+      return responseData;
+    } catch (error) {
+      console.error('❌ [Register] Error:', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   /**
