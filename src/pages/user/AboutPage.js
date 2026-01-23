@@ -8,6 +8,11 @@ import {
     UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
+// Import team images
+import avatarTai from '../../assets/images/about/anh-avatar-fb-8.jpg';
+import avatarVy from '../../assets/images/about/avatar_nu.jpg';
+import storeImage from '../../assets/images/about/gioithieuhoa.jpg';
+
 const AboutPage = () => {
     const stats = [
         { number: '10+', label: 'Năm kinh nghiệm' },
@@ -40,10 +45,20 @@ const AboutPage = () => {
     ];
 
     const team = [
-        { name: 'Nguyễn Văn A', role: 'Founder & CEO', image: 'https://randomuser.me/api/portraits/men/1.jpg' },
-        { name: 'Trần Thị B', role: 'Head Florist', image: 'https://randomuser.me/api/portraits/women/2.jpg' },
-        { name: 'Lê Văn C', role: 'Creative Director', image: 'https://randomuser.me/api/portraits/men/3.jpg' },
-        { name: 'Phạm Thị D', role: 'Customer Care Lead', image: 'https://randomuser.me/api/portraits/women/4.jpg' },
+        { 
+            name: 'Nguyễn Tuấn Tài', 
+            role: 'Co-Founder & Developer', 
+            image: avatarTai,
+            description: 'Chịu trách nhiệm phát triển hệ thống và đảm bảo trải nghiệm người dùng tốt nhất.',
+            social: { facebook: '#', linkedin: '#', email: 'tai@flowercorner.vn' }
+        },
+        { 
+            name: 'Nguyễn Quỳnh Thảo Vy', 
+            role: 'Co-Founder & Developer', 
+            image: avatarVy,
+            description: 'Sáng tạo và thiết kế những mẫu hoa độc đáo, mang đến vẻ đẹp tinh tế.',
+            social: { facebook: '#', linkedin: '#', email: 'vy@flowercorner.vn' }
+        },
     ];
 
     return (
@@ -91,41 +106,136 @@ const AboutPage = () => {
                 </div>
             </section>
 
-            {/* Our Story */}
-            <section className="py-20">
+            {/* Giới thiệu về FlowerCorner */}
+            <section className="py-20 bg-white">
                 <div className="container-custom">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                        <div>
-                            <h2 className="text-3xl font-display font-bold text-gray-900 mb-6">
-                                Câu Chuyện Của Chúng Tôi
-                            </h2>
-                            <div className="space-y-4 text-gray-600 leading-relaxed">
-                                <p>
-                                    Khởi đầu từ một cửa hàng hoa nhỏ tại Quận 1, TP.HCM vào năm 2013,
-                                    FlowerCorner được sinh ra từ niềm đam mê vô tận với vẻ đẹp của hoa tươi
-                                    và khát khao mang đến niềm vui cho mọi người.
-                                </p>
-                                <p>
-                                    Qua hơn 10 năm phát triển, chúng tôi tự hào đã phục vụ hơn 50,000 khách hàng,
-                                    từ những bó hoa sinh nhật ấm áp đến những lẵng hoa khai trương hoành tráng.
-                                </p>
-                                <p>
-                                    Mỗi sản phẩm tại FlowerCorner đều được thiết kế với sự tỉ mỉ, sáng tạo
-                                    và tâm huyết, phản ánh phong cách hiện đại nhưng vẫn giữ nguyên vẻ đẹp
-                                    tự nhiên của hoa.
+                    <div className="max-w-4xl mx-auto">
+                        <h2 className="text-3xl md:text-4xl font-display font-bold text-gray-900 mb-6">
+                            Giới thiệu về <span className="text-gradient">FlowerCorner.vn</span>
+                        </h2>
+                        <p className="text-gray-600 text-lg leading-relaxed mb-10">
+                            FlowerCorner.vn là shop hoa tươi uy tín hàng đầu tại Việt Nam. FlowerCorner.vn cung cấp dịch vụ 
+                            <span className="text-pink-500 font-medium"> đặt hoa online giao tận nơi trên toàn quốc</span>. 
+                            Với hệ thống cửa hàng liên kết trải rộng trên khắp 63 tỉnh - thành phố tại Việt Nam, 
+                            shop hoa tươi FlowerCorner.vn có thể giúp bạn dễ dàng gửi hoa cho người thân, bạn bè, 
+                            đối tác kinh doanh ở bất cứ đâu và bất cứ khi nào.
+                        </p>
+                    </div>
+                    
+                    {/* Shop Image */}
+                    <div className="relative rounded-3xl overflow-hidden shadow-2xl max-w-5xl mx-auto">
+                        <img
+                            src={storeImage}
+                            alt="FlowerCorner Store"
+                            className="w-full h-auto object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                        
+
+                    </div>
+                </div>
+            </section>
+
+            {/* Lịch sử hình thành và phát triển */}
+            <section className="py-20 bg-gradient-to-br from-gray-50 to-pink-50">
+                <div className="container-custom">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-1 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full"></div>
+                            <span className="text-pink-500 font-semibold uppercase tracking-wide text-sm">Về Chúng Tôi</span>
+                        </div>
+                        
+                        <h2 className="text-3xl md:text-4xl font-display font-bold text-gray-900 mb-8">
+                            Lịch sử hình thành và phát triển
+                        </h2>
+                        
+                        <div className="space-y-6 text-gray-600 leading-relaxed">
+                            <p className="text-lg">
+                                FlowerCorner được thành lập và chính thức đi vào hoạt động từ năm <span className="text-pink-500 font-bold">2017</span>. 
+                                Bắt đầu với mô hình shop hoa tươi online, hiện tại FlowerCorner.vn đã có <span className="font-semibold">2 chi nhánh</span> cửa hàng 
+                                tại <span className="font-semibold">TP.HCM và Hà Nội</span>. Trong tương lai, FlowerCorner.vn sẽ tiếp tục mở rộng mạng lưới chi nhánh 
+                                tại các tỉnh - thành phố tại Việt Nam để giúp khách hàng có thể dễ dàng gửi tặng hoa tới người thân, đối tác ở Việt Nam.
+                            </p>
+                            
+                            <div className="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-pink-500">
+                                <p className="text-gray-700">
+                                    Sau hơn <span className="text-pink-500 font-bold">5 năm hoạt động</span>, từ một shop hoa nhỏ chỉ hoạt động online, 
+                                    FlowerCorner.vn đã trở thành một trong những Công ty cung cấp dịch vụ điện hoa, đặt hoa tươi online hàng đầu 
+                                    tại thị trường Việt Nam, và giúp hơn <span className="text-pink-500 font-bold">50.000 khách hàng</span> gửi tặng hoa 
+                                    cho những người thân yêu vào những dịp đặc biệt.
                                 </p>
                             </div>
                         </div>
-                        <div className="relative">
-                            <img
-                                src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800"
-                                alt="Our Story"
-                                className="rounded-2xl shadow-xl"
-                            />
-                            <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-xl shadow-lg">
-                                <div className="text-4xl font-bold text-pink-500">2013</div>
+                        
+                        {/* Timeline */}
+                        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 text-center">
+                                <div className="text-4xl font-bold text-gradient mb-2">2017</div>
                                 <div className="text-gray-600">Năm thành lập</div>
                             </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 text-center">
+                                <div className="text-4xl font-bold text-gradient mb-2">2</div>
+                                <div className="text-gray-600">Chi nhánh cửa hàng</div>
+                            </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 text-center">
+                                <div className="text-4xl font-bold text-gradient mb-2">50K+</div>
+                                <div className="text-gray-600">Khách hàng tin tưởng</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Tầm nhìn và sứ mệnh */}
+            <section className="py-20 bg-white">
+                <div className="container-custom">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-1 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full"></div>
+                            <span className="text-pink-500 font-semibold uppercase tracking-wide text-sm">Định hướng</span>
+                        </div>
+                        
+                        <h2 className="text-3xl md:text-4xl font-display font-bold text-gray-900 mb-8">
+                            Tầm nhìn và sứ mệnh
+                        </h2>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Tầm nhìn */}
+                            <div className="bg-gradient-to-br from-pink-50 to-rose-50 p-8 rounded-3xl border border-pink-100">
+                                <div className="w-14 h-14 bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center mb-6">
+                                    <span className="text-2xl">🎯</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-4">Tầm nhìn</h3>
+                                <p className="text-gray-600 leading-relaxed">
+                                    FlowerCorner.vn hướng tới mục tiêu trở thành một trong 
+                                    <span className="text-pink-500 font-semibold"> 3 Công ty hàng đầu tại Việt Nam</span> trong lĩnh vực hoa tươi, 
+                                    đặt hoa online, và trở thành một lựa chọn đáng tin cậy của người Việt Nam mỗi khi cần gửi hoa 
+                                    cho người thân trong những dịp đặc biệt.
+                                </p>
+                            </div>
+                            
+                            {/* Sứ mệnh */}
+                            <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-8 rounded-3xl border border-purple-100">
+                                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-6">
+                                    <span className="text-2xl">💝</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-4">Sứ mệnh</h3>
+                                <p className="text-gray-600 leading-relaxed">
+                                    FlowerCorner.vn theo đuổi là phát triển bền vững, luôn hướng tới khách hàng và mang lại 
+                                    <span className="text-purple-500 font-semibold"> những giá trị tốt nhất</span> cho khách hàng khi lựa chọn FlowerCorner.vn.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        {/* Giá trị cốt lõi */}
+                        <div className="mt-10 bg-gradient-to-r from-pink-500 to-rose-500 p-8 rounded-3xl text-white">
+                            <h3 className="text-xl font-bold mb-4">💐 Cam kết của chúng tôi</h3>
+                            <p className="leading-relaxed opacity-95">
+                                FlowerCorner.vn hiểu rằng, hoa tươi không đơn thuần chỉ là một món quà tặng, 
+                                mà còn chứa đựng những thông điệp, tình cảm của người gửi tới người thân, bạn bè của họ. 
+                                Chính vì thế, FlowerCorner.vn luôn nỗ lực không ngừng để cải thiện chất lượng dịch vụ và sản phẩm 
+                                để mang đến cho khách hàng những trải nghiệm tốt nhất khi sử dụng dịch vụ đặt hoa online giao tận nơi của FlowerCorner.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -164,32 +274,99 @@ const AboutPage = () => {
             </section>
 
             {/* Team */}
-            <section className="py-20">
+            <section className="py-20 bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50">
                 <div className="container-custom">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl font-display font-bold text-gray-900 mb-4">
-                            Đội Ngũ Của Chúng Tôi
+                    <div className="text-center mb-16">
+                        <span className="inline-block px-4 py-2 bg-pink-100 text-pink-600 rounded-full text-sm font-medium mb-4">
+                            💼 Đội Ngũ Sáng Lập
+                        </span>
+                        <h2 className="text-4xl font-display font-bold text-gray-900 mb-4">
+                            Gặp Gỡ Chúng Tôi
                         </h2>
-                        <p className="text-gray-600 max-w-2xl mx-auto">
-                            Những con người đam mê và tận tâm tạo nên FlowerCorner
+                        <p className="text-gray-600 max-w-2xl mx-auto text-lg">
+                            Những người trẻ đam mê công nghệ và yêu thích vẻ đẹp của hoa tươi
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                    <div className="flex flex-wrap justify-center gap-8 lg:gap-16">
                         {team.map((member, index) => (
-                            <div key={index} className="text-center group">
-                                <div className="relative mb-4 overflow-hidden rounded-2xl">
+                            <div 
+                                key={index} 
+                                className="group relative bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden w-full sm:w-80 lg:w-96"
+                            >
+                                {/* Card Background Gradient */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-rose-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                
+                                {/* Image Container */}
+                                <div className="relative h-72 overflow-hidden">
                                     <img
                                         src={member.image}
                                         alt={member.name}
-                                        className="w-full aspect-square object-cover transition-transform duration-300 group-hover:scale-110"
+                                        className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-110"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-pink-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                    {/* Gradient Overlay */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/20 to-transparent"></div>
+                                    
+                                    {/* Name & Role on Image */}
+                                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                                        <h3 className="text-2xl font-bold mb-1">{member.name}</h3>
+                                        <p className="text-pink-300 font-medium">{member.role}</p>
+                                    </div>
                                 </div>
-                                <h3 className="font-semibold text-gray-900">{member.name}</h3>
-                                <p className="text-sm text-pink-500">{member.role}</p>
+
+                                {/* Content */}
+                                <div className="relative p-6">
+                                    <p className="text-gray-600 leading-relaxed mb-6">
+                                        {member.description}
+                                    </p>
+                                    
+                                    {/* Social Links */}
+                                    <div className="flex items-center gap-4">
+                                        <a 
+                                            href={member.social.facebook} 
+                                            className="w-10 h-10 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center text-pink-500 hover:from-pink-500 hover:to-rose-500 hover:text-white transition-all duration-300"
+                                            title="Facebook"
+                                        >
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
+                                            </svg>
+                                        </a>
+                                        <a 
+                                            href={member.social.linkedin} 
+                                            className="w-10 h-10 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center text-pink-500 hover:from-pink-500 hover:to-rose-500 hover:text-white transition-all duration-300"
+                                            title="LinkedIn"
+                                        >
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2zM4 6a2 2 0 100-4 2 2 0 000 4z"/>
+                                            </svg>
+                                        </a>
+                                        <a 
+                                            href={`mailto:${member.social.email}`}
+                                            className="w-10 h-10 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center text-pink-500 hover:from-pink-500 hover:to-rose-500 hover:text-white transition-all duration-300"
+                                            title="Email"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                {/* Decorative Element */}
+                                <div className="absolute top-4 right-4 w-12 h-12 bg-gradient-to-br from-pink-400 to-rose-500 rounded-full opacity-20 blur-xl group-hover:opacity-40 transition-opacity duration-500"></div>
                             </div>
                         ))}
+                    </div>
+
+                    {/* Team Quote */}
+                    <div className="mt-16 text-center">
+                        <div className="inline-block bg-white rounded-2xl shadow-lg px-8 py-6 max-w-2xl">
+                            <p className="text-gray-600 italic text-lg">
+                                "Chúng tôi tin rằng mỗi bông hoa đều mang một thông điệp đặc biệt, 
+                                và sứ mệnh của chúng tôi là giúp bạn truyền tải thông điệp đó một cách hoàn hảo nhất."
+                            </p>
+                            <div className="mt-4 text-pink-500 font-semibold">— Đội ngũ FlowerCorner</div>
+                        </div>
                     </div>
                 </div>
             </section>

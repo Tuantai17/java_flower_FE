@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 // Components
 import Breadcrumb from '../../components/user/Breadcrumb';
 import Loading from '../../components/common/Loading';
+import LoginRequiredModal from '../../components/common/LoginRequiredModal';
 
 // Product Detail Components
 import { 
@@ -18,6 +19,7 @@ import {
 import productApi from '../../api/productApi';
 import reviewApi from '../../api/reviewApi';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * ========================================
@@ -40,9 +42,11 @@ const ProductDetailPage = () => {
     const [relatedProducts, setRelatedProducts] = useState([]);
     const [reviewStats, setReviewStats] = useState({ averageRating: 0, totalReviews: 0 });
     const [loading, setLoading] = useState(true);
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     // Context
     const { addToCart, toggleFavorite, isFavorite, showNotification } = useApp();
+    const { isAuthenticated } = useAuth();
 
     // ========== Effects ==========
     
@@ -106,6 +110,12 @@ const ProductDetailPage = () => {
     // ========== Event Handlers ==========
 
     const handleAddToCart = (product, quantity) => {
+        // Kiểm tra đăng nhập trước khi thêm vào giỏ hàng
+        if (!isAuthenticated) {
+            setShowLoginModal(true);
+            return;
+        }
+
         addToCart(product, quantity);
         showNotification({
             type: 'success',
@@ -220,6 +230,13 @@ const ProductDetailPage = () => {
                     onToggleFavorite={handleToggleFavorite}
                 />
             </div>
+
+            {/* Login Required Modal */}
+            <LoginRequiredModal 
+                isOpen={showLoginModal}
+                onClose={() => setShowLoginModal(false)}
+                message="Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng"
+            />
         </div>
     );
 };

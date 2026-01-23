@@ -50,20 +50,17 @@ const ProfileHeader = ({ admin, onEditClick }) => {
             <div className="relative flex flex-col md:flex-row items-center gap-6">
                 {/* Avatar */}
                 <div className="relative group">
-                    <div className="w-28 h-28 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/50 shadow-lg">
+                    <div className="w-28 h-28 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/50 shadow-lg overflow-hidden">
                         {admin?.avatar ? (
                             <img 
                                 src={admin.avatar} 
                                 alt={admin.username}
-                                className="w-full h-full rounded-full object-cover"
+                                className="w-full h-full object-cover"
                             />
                         ) : (
                             initials
                         )}
                     </div>
-                    <button className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg text-rose-500 hover:bg-rose-50 transition-colors">
-                        <CameraIcon className="h-5 w-5" />
-                    </button>
                 </div>
                 
                 {/* Info */}
@@ -167,7 +164,7 @@ const ActivityItem = ({ title, time, type }) => {
 /**
  * Edit Profile Modal
  */
-const EditProfileModal = ({ isOpen, onClose, admin, onSave }) => {
+const EditProfileModal = ({ isOpen, onClose, admin, onSave, onAvatarUpload }) => {
     const [formData, setFormData] = useState({
         fullName: admin?.fullName || '',
         email: admin?.email || '',
@@ -175,26 +172,68 @@ const EditProfileModal = ({ isOpen, onClose, admin, onSave }) => {
         address: admin?.address || '',
     });
     const [saving, setSaving] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState(admin?.avatar || null);
+    const [avatarError, setAvatarError] = useState('');
 
     if (!isOpen) return null;
+
+    const handleAvatarChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate
+        if (!file.type.startsWith('image/')) {
+            setAvatarError('Vui lòng chọn file ảnh hợp lệ');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setAvatarError('Kích thước ảnh không được vượt quá 5MB');
+            return;
+        }
+
+        setAvatarError('');
+        setUploadingAvatar(true);
+
+        try {
+            const userService = (await import('../../../api/userService')).default;
+            // Sử dụng uploadAvatarAdmin với adminToken
+            const avatarUrl = await userService.uploadAvatarAdmin(file);
+            setAvatarPreview(avatarUrl);
+            if (onAvatarUpload) {
+                onAvatarUpload(avatarUrl);
+            }
+        } catch (err) {
+            console.error('Error uploading avatar:', err);
+            setAvatarError('Lỗi upload: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setUploadingAvatar(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
+        setAvatarError(''); // Clear any previous error
         try {
             await onSave(formData);
+            // Hiển thị thông báo thành công
+            alert('Cập nhật hồ sơ thành công!');
             onClose();
         } catch (error) {
             console.error('Error saving profile:', error);
+            setAvatarError('Lỗi cập nhật: ' + (error.response?.data?.message || error.message));
         } finally {
             setSaving(false);
         }
     };
 
+    const initials = admin?.username?.charAt(0)?.toUpperCase() || 'A';
+
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl">
-                <div className="flex items-center justify-between px-6 py-4 border-b">
+            <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white">
                     <h3 className="text-lg font-semibold text-gray-800">Chỉnh sửa hồ sơ</h3>
                     <button
                         onClick={onClose}
@@ -205,6 +244,48 @@ const EditProfileModal = ({ isOpen, onClose, admin, onSave }) => {
                 </div>
                 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    {/* Avatar Upload Section */}
+                    <div className="flex flex-col items-center mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                            Ảnh đại diện
+                        </label>
+                        <div className="relative group">
+                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                                {avatarPreview ? (
+                                    <img 
+                                        src={avatarPreview} 
+                                        alt="Avatar" 
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-2xl font-bold text-white">{initials}</span>
+                                )}
+                            </div>
+                            <label 
+                                htmlFor="edit-avatar-upload"
+                                className="absolute bottom-0 right-0 p-2 bg-rose-500 rounded-full text-white hover:bg-rose-600 transition-colors cursor-pointer shadow-lg"
+                            >
+                                {uploadingAvatar ? (
+                                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <CameraIcon className="h-4 w-4" />
+                                )}
+                            </label>
+                            <input
+                                type="file"
+                                id="edit-avatar-upload"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleAvatarChange}
+                                disabled={uploadingAvatar}
+                            />
+                        </div>
+                        {avatarError && (
+                            <p className="text-sm text-red-500 mt-2">{avatarError}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">Click vào icon camera để thay đổi ảnh</p>
+                    </div>
+
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Họ và tên
@@ -220,13 +301,13 @@ const EditProfileModal = ({ isOpen, onClose, admin, onSave }) => {
                     
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Email
+                            Email <span className="text-gray-400 text-xs">(không thể thay đổi)</span>
                         </label>
                         <input
                             type="email"
                             value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                            disabled
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
                             placeholder="Nhập email"
                         />
                     </div>
@@ -471,7 +552,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
 // ============================================
 
 const AdminProfilePage = () => {
-    const { admin, isAuthenticated } = useAdminAuth();
+    const { admin, isAuthenticated, updateAdmin } = useAdminAuth();
     const [showEditModal, setShowEditModal] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -496,10 +577,36 @@ const AdminProfilePage = () => {
 
     // Handle save profile
     const handleSaveProfile = async (data) => {
-        // TODO: Implement API call to update profile
-        console.log('Saving profile:', data);
-        // Mock success
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+            const userService = (await import('../../../api/userService')).default;
+            
+            // Chỉ gửi các field được backend hỗ trợ (không có email)
+            const profileData = {
+                fullName: data.fullName,
+                phoneNumber: data.phoneNumber,
+                address: data.address,
+            };
+            
+            console.log('Sending profile update:', profileData);
+            
+            // Gọi API update profile với adminToken
+            const updatedProfile = await userService.updateProfileAdmin(profileData);
+            
+            console.log('API response:', updatedProfile);
+            
+            // Cập nhật admin context với dữ liệu từ API response
+            updateAdmin({ 
+                ...admin, 
+                fullName: updatedProfile.fullName || data.fullName,
+                phoneNumber: updatedProfile.phoneNumber || data.phoneNumber,
+                address: updatedProfile.address || data.address,
+            });
+            
+            console.log('Profile updated successfully!');
+        } catch (error) {
+            console.error('Error saving profile:', error);
+            throw error; // Re-throw để modal hiển thị lỗi
+        }
     };
 
     // Mock activities
@@ -548,7 +655,7 @@ const AdminProfilePage = () => {
             {/* Profile Header */}
             <ProfileHeader 
                 admin={admin} 
-                onEditClick={() => setShowEditModal(true)} 
+                onEditClick={() => setShowEditModal(true)}
             />
 
             {/* Content Grid */}
@@ -692,6 +799,7 @@ const AdminProfilePage = () => {
                 onClose={() => setShowEditModal(false)}
                 admin={admin}
                 onSave={handleSaveProfile}
+                onAvatarUpload={(avatarUrl) => updateAdmin({ ...admin, avatar: avatarUrl })}
             />
 
             {/* Change Password Modal */}

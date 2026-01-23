@@ -296,12 +296,16 @@ const reviewApi = {
      * 
      * @param {number} reviewId - ID đánh giá
      * @param {string} reply - Nội dung phản hồi
+     * @param {string[]} images - Danh sách URL ảnh đính kèm (optional)
      * @returns {Promise<Object>} - Review đã cập nhật
      */
-    adminReplyReview: async (reviewId, reply) => {
-        console.log(`🌟 [ADMIN] Replying to review #${reviewId}`);
+    adminReplyReview: async (reviewId, reply, images = []) => {
+        console.log(`🌟 [ADMIN] Replying to review #${reviewId} with ${images.length} images`);
         try {
-            const response = await axiosInstance.post(`/admin/reviews/${reviewId}/reply`, { reply });
+            const response = await axiosInstance.post(`/admin/reviews/${reviewId}/reply`, { 
+                reply,
+                images: images.length > 0 ? images : null
+            });
             console.log('✅ [ADMIN] Reply sent');
             return unwrapResponse(response);
         } catch (error) {

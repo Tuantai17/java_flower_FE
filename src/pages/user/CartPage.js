@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice } from '../../utils/formatPrice';
 import { getImageUrl } from '../../utils/imageUrl';
-import { VoucherInput } from '../../components/user/VoucherList';
 import {
     TrashIcon,
     PlusIcon,
@@ -24,11 +23,6 @@ const CartPage = () => {
     } = useApp();
 
     const { cart } = state;
-    const [appliedVoucher, setAppliedVoucher] = useState(null);
-
-    // Calculate final total
-    const discountAmount = appliedVoucher?.discountAmount || 0;
-    const finalTotal = cartTotal - discountAmount;
 
     // Handle quantity change
     const handleQuantityChange = (productId, newQuantity) => {
@@ -37,43 +31,22 @@ const CartPage = () => {
         } else if (newQuantity <= 99) {
             updateCartQuantity(productId, newQuantity);
         }
-        // Recalculate voucher discount if applied
-        if (appliedVoucher) {
-            // Re-check voucher validity with new cart total
-            setAppliedVoucher(null);
-        }
     };
 
     // Handle remove item
     const handleRemoveItem = (productId) => {
         removeFromCart(productId);
-        // Clear voucher if cart changes significantly
-        if (appliedVoucher) {
-            setAppliedVoucher(null);
-        }
     };
 
     // Handle clear cart
     const handleClearCart = () => {
         if (window.confirm('Bạn có chắc muốn xóa tất cả sản phẩm trong giỏ hàng?')) {
             clearCart();
-            setAppliedVoucher(null);
         }
-    };
-
-    // Handle apply voucher
-    const handleApplyVoucher = (voucher) => {
-        setAppliedVoucher(voucher);
     };
 
     // Handle checkout
     const handleCheckout = () => {
-        // Store voucher info in session/localStorage for checkout page
-        if (appliedVoucher) {
-            sessionStorage.setItem('appliedVoucher', JSON.stringify(appliedVoucher));
-        } else {
-            sessionStorage.removeItem('appliedVoucher');
-        }
         navigate('/checkout');
     };
 
@@ -146,28 +119,14 @@ const CartPage = () => {
                                     <span>{formatPrice(cartTotal)}</span>
                                 </div>
 
-                                {/* Discount */}
-                                {appliedVoucher && discountAmount > 0 && (
-                                    <div className="flex justify-between text-green-600">
-                                        <span>Giảm giá ({appliedVoucher.code})</span>
-                                        <span>-{formatPrice(discountAmount)}</span>
-                                    </div>
-                                )}
-
-                                <div className="flex justify-between text-gray-600">
-                                    <span>Phí vận chuyển</span>
-                                    <span className="text-green-600 font-medium">Miễn phí</span>
-                                </div>
                                 <div className="border-t pt-4">
                                     <div className="flex justify-between text-lg font-bold">
                                         <span>Tổng cộng</span>
-                                        <span className="text-rose-600">{formatPrice(finalTotal)}</span>
+                                        <span className="text-rose-600">{formatPrice(cartTotal)}</span>
                                     </div>
-                                    {appliedVoucher && (
-                                        <p className="text-green-600 text-sm mt-1">
-                                            Bạn tiết kiệm được {formatPrice(discountAmount)}
-                                        </p>
-                                    )}
+                                    <p className="text-sm text-gray-500 mt-2">
+                                        💡 Áp dụng mã giảm giá ở bước thanh toán
+                                    </p>
                                 </div>
                             </div>
 
@@ -187,18 +146,6 @@ const CartPage = () => {
                                 <ArrowLeftIcon className="h-5 w-5" />
                                 Tiếp tục mua sắm
                             </Link>
-
-                            {/* Voucher Section */}
-                            <div className="mt-6 pt-6 border-t">
-                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                    Mã giảm giá
-                                </label>
-                                <VoucherInput
-                                    orderTotal={cartTotal}
-                                    onApply={handleApplyVoucher}
-                                    appliedVoucher={appliedVoucher}
-                                />
-                            </div>
                         </div>
                     </div>
                 </div>

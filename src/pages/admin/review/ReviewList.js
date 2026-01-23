@@ -14,6 +14,7 @@ import reviewApi, {
     REVIEW_STATUS_LABELS,
     REVIEW_STATUS_COLORS,
 } from '../../../api/reviewApi';
+import uploadApi from '../../../api/uploadApi';
 import ticketWebSocketService from '../../../services/ticketWebSocketService';
 
 /**
@@ -400,11 +401,46 @@ const ReviewRow = ({ review, onApprove, onReject, onReply, onDelete }) => {
 };
 
 /**
- * Reply Modal
+ * Reply Modal with Image Upload
  */
 const ReplyModal = ({ review, onClose, onSuccess }) => {
     const [reply, setReply] = useState(review.adminReply || '');
+    const [images, setImages] = useState(review.adminReplyImages || []);
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = React.useRef(null);
+
+    const handleImageUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        
+        // Limit to 5 images total
+        if (images.length + files.length > 5) {
+            alert('Tối đa 5 ảnh');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const uploadPromises = files.map(async (file) => {
+                const result = await uploadApi.uploadProductImage(file);
+                return uploadApi.extractUrl(result);
+            });
+
+            const uploadedUrls = await Promise.all(uploadPromises);
+            const validUrls = uploadedUrls.filter(url => url);
+            setImages(prev => [...prev, ...validUrls]);
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Lỗi upload ảnh: ' + (error.message || 'Vui lòng thử lại'));
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleRemoveImage = (index) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -412,8 +448,8 @@ const ReplyModal = ({ review, onClose, onSuccess }) => {
 
         try {
             setLoading(true);
-            await reviewApi.adminReplyReview(review.id, reply.trim());
-            alert('Phản hồi đã được gửi thành công! Khách hàng sẽ thấy phản hồi ngay lập tức.');
+            await reviewApi.adminReplyReview(review.id, reply.trim(), images);
+            alert('Phản hồi đã được gửi thành công!');
             onSuccess();
             onClose();
         } catch (error) {
@@ -427,7 +463,7 @@ const ReplyModal = ({ review, onClose, onSuccess }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-            <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
+            <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">
                     Phản hồi đánh giá
                 </h3>
@@ -449,6 +485,19 @@ const ReplyModal = ({ review, onClose, onSuccess }) => {
                         </div>
                     </div>
                     <p className="text-gray-600 text-sm">{review.comment}</p>
+                    {/* Show customer images */}
+                    {review.images && review.images.length > 0 && (
+                        <div className="flex gap-2 mt-2">
+                            {review.images.map((img, idx) => (
+                                <img 
+                                    key={idx} 
+                                    src={img} 
+                                    alt={`Review ${idx + 1}`}
+                                    className="w-12 h-12 object-cover rounded"
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Reply Form */}
@@ -461,6 +510,61 @@ const ReplyModal = ({ review, onClose, onSuccess }) => {
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none resize-none mb-4"
                     />
 
+                    {/* Image Upload Section */}
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Ảnh đính kèm (tối đa 5 ảnh)
+                        </label>
+                        
+                        {/* Image Preview */}
+                        <div className="flex flex-wrap gap-2 mb-2">
+                            {images.map((img, index) => (
+                                <div key={index} className="relative group">
+                                    <img
+                                        src={img}
+                                        alt={`Preview ${index + 1}`}
+                                        className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveImage(index)}
+                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                            
+                            {/* Add Image Button */}
+                            {images.length < 5 && (
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploading}
+                                    className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-rose-400 hover:text-rose-500 transition-colors"
+                                >
+                                    {uploading ? (
+                                        <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <>
+                                            <span className="text-2xl">+</span>
+                                            <span className="text-xs">Thêm ảnh</span>
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+                        
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageUpload}
+                            className="hidden"
+                        />
+                    </div>
+
                     <div className="flex gap-3">
                         <button
                             type="button"
@@ -471,7 +575,7 @@ const ReplyModal = ({ review, onClose, onSuccess }) => {
                         </button>
                         <button
                             type="submit"
-                            disabled={loading || !reply.trim()}
+                            disabled={loading || !reply.trim() || uploading}
                             className="flex-1 px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 disabled:opacity-50"
                         >
                             {loading ? 'Đang gửi...' : 'Gửi phản hồi'}

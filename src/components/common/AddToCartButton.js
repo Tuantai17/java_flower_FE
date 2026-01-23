@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ShoppingBagIcon } from '@heroicons/react/24/outline';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import LoginRequiredModal from './LoginRequiredModal';
 
 /**
  * AddToCartButton Component
@@ -27,6 +29,8 @@ const AddToCartButton = ({
     onSuccess,
 }) => {
     const { addToCart, showNotification } = useApp();
+    const { isAuthenticated } = useAuth();
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     const isOutOfStock = product?.stockQuantity === 0;
     const isDisabled = disabled || isOutOfStock;
@@ -36,6 +40,12 @@ const AddToCartButton = ({
         e.stopPropagation();
 
         if (isDisabled || !product) return;
+
+        // Kiểm tra đăng nhập trước khi thêm vào giỏ hàng
+        if (!isAuthenticated) {
+            setShowLoginModal(true);
+            return;
+        }
 
         addToCart(product, quantity);
 
@@ -64,15 +74,24 @@ const AddToCartButton = ({
     const buttonText = isOutOfStock ? 'Hết hàng' : text;
 
     return (
-        <button
-            onClick={handleAddToCart}
-            disabled={isDisabled}
-            className={`${baseStyles} ${variantStyles[variant]} ${className}`}
-            title={isOutOfStock ? 'Sản phẩm đã hết hàng' : `Thêm ${product?.name || 'sản phẩm'} vào giỏ`}
-        >
-            {showIcon && <ShoppingBagIcon className="h-5 w-5" />}
-            {variant !== 'icon' && <span>{buttonText}</span>}
-        </button>
+        <>
+            <button
+                onClick={handleAddToCart}
+                disabled={isDisabled}
+                className={`${baseStyles} ${variantStyles[variant]} ${className}`}
+                title={isOutOfStock ? 'Sản phẩm đã hết hàng' : `Thêm ${product?.name || 'sản phẩm'} vào giỏ`}
+            >
+                {showIcon && <ShoppingBagIcon className="h-5 w-5" />}
+                {variant !== 'icon' && <span>{buttonText}</span>}
+            </button>
+
+            {/* Login Required Modal */}
+            <LoginRequiredModal 
+                isOpen={showLoginModal}
+                onClose={() => setShowLoginModal(false)}
+                message="Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng"
+            />
+        </>
     );
 };
 

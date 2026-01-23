@@ -59,11 +59,18 @@ const axiosInstance = axios.create({
 // Request interceptor
 axiosInstance.interceptors.request.use(
     (config) => {
-        // Lấy token phù hợp cho request này
-        const token = getTokenForRequest(config.url);
-
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        // CHỈ set token nếu header Authorization CHƯA được set explicit
+        // Điều này cho phép các function như updateProfileAdmin() tự set token riêng
+        if (!config.headers.Authorization) {
+            const token = getTokenForRequest(config.url);
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } else {
+            // Header đã được set explicit, log để debug
+            if (process.env.NODE_ENV === 'development') {
+                console.log('🔐 Using explicit Authorization header for:', config.url);
+            }
         }
 
         // Log request in development

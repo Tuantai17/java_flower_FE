@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import productApi from '../../../api/productApi';
 import reviewApi, { REVIEW_STATUS, REVIEW_STATUS_LABELS, REVIEW_STATUS_COLORS } from '../../../api/reviewApi';
+import uploadApi from '../../../api/uploadApi';
 import { formatPrice } from '../../../utils/formatPrice';
 import {
     ArrowLeftIcon,
@@ -48,7 +49,10 @@ const ProductShow = () => {
     // Reply state
     const [replyingId, setReplyingId] = useState(null);
     const [replyText, setReplyText] = useState('');
+    const [replyImages, setReplyImages] = useState([]);
     const [actionLoading, setActionLoading] = useState(null);
+    const [imageUploading, setImageUploading] = useState(false);
+    const fileInputRef = React.useRef(null);
 
     // Fetch product detail
     const fetchProduct = useCallback(async () => {
@@ -182,9 +186,10 @@ const ProductShow = () => {
 
         setActionLoading(reviewId);
         try {
-            await reviewApi.adminReplyReview(reviewId, replyText);
+            await reviewApi.adminReplyReview(reviewId, replyText, replyImages);
             setReplyingId(null);
             setReplyText('');
+            setReplyImages([]);
             fetchReviews();
         } catch (err) {
             console.error('Error replying to review:', err);
@@ -192,6 +197,44 @@ const ProductShow = () => {
         } finally {
             setActionLoading(null);
         }
+    };
+
+    // Handle image upload for reply - using backend API
+    const handleReplyImageUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        
+        // Limit to 5 images
+        if (replyImages.length + files.length > 5) {
+            alert('Tối đa 5 ảnh');
+            return;
+        }
+
+        setImageUploading(true);
+        try {
+            const uploadPromises = files.map(async (file) => {
+                const result = await uploadApi.uploadProductImage(file);
+                // Extract URL from response
+                return uploadApi.extractUrl(result);
+            });
+
+            const uploadedUrls = await Promise.all(uploadPromises);
+            // Filter out null/undefined results
+            const validUrls = uploadedUrls.filter(url => url);
+            setReplyImages(prev => [...prev, ...validUrls]);
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Lỗi upload ảnh: ' + (error.message || 'Vui lòng thử lại'));
+        } finally {
+            setImageUploading(false);
+            // Reset file input
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    // Remove image from reply
+    const handleRemoveReplyImage = (index) => {
+        setReplyImages(prev => prev.filter((_, i) => i !== index));
     };
 
     // Handle delete review
@@ -539,6 +582,19 @@ const ProductShow = () => {
                                                     Phản hồi từ Shop ({formatDate(review.repliedAt)}):
                                                 </p>
                                                 <p className="text-sm text-gray-700">{review.adminReply}</p>
+                                                {/* Admin Reply Images */}
+                                                {review.adminReplyImages && review.adminReplyImages.length > 0 && (
+                                                    <div className="flex gap-2 mt-2">
+                                                        {review.adminReplyImages.map((img, idx) => (
+                                                            <img
+                                                                key={idx}
+                                                                src={img}
+                                                                alt={`Reply ${idx + 1}`}
+                                                                className="w-16 h-16 object-cover rounded-lg border border-pink-200"
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 
@@ -552,11 +608,64 @@ const ProductShow = () => {
                                                     rows={3}
                                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none resize-none"
                                                 />
-                                                <div className="flex justify-end gap-2 mt-2">
+                                                
+                                                {/* Image Upload Section */}
+                                                <div className="mt-3">
+                                                    <p className="text-xs text-gray-500 mb-2">Ảnh đính kèm (tối đa 5 ảnh)</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {/* Preview images */}
+                                                        {replyImages.map((img, index) => (
+                                                            <div key={index} className="relative group">
+                                                                <img
+                                                                    src={img}
+                                                                    alt={`Preview ${index + 1}`}
+                                                                    className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveReplyImage(index)}
+                                                                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                        
+                                                        {/* Add image button */}
+                                                        {replyImages.length < 5 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => fileInputRef.current?.click()}
+                                                                disabled={imageUploading}
+                                                                className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-pink-400 hover:text-pink-500 transition-colors"
+                                                            >
+                                                                {imageUploading ? (
+                                                                    <div className="w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" />
+                                                                ) : (
+                                                                    <>
+                                                                        <PhotoIcon className="h-5 w-5" />
+                                                                        <span className="text-[10px]">Thêm ảnh</span>
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <input
+                                                        ref={fileInputRef}
+                                                        type="file"
+                                                        accept="image/*"
+                                                        multiple
+                                                        onChange={handleReplyImageUpload}
+                                                        className="hidden"
+                                                    />
+                                                </div>
+
+                                                <div className="flex justify-end gap-2 mt-3">
                                                     <button
                                                         onClick={() => {
                                                             setReplyingId(null);
                                                             setReplyText('');
+                                                            setReplyImages([]);
                                                         }}
                                                         className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
                                                     >
@@ -564,10 +673,10 @@ const ProductShow = () => {
                                                     </button>
                                                     <button
                                                         onClick={() => handleReply(review.id)}
-                                                        disabled={!replyText.trim() || actionLoading === review.id}
+                                                        disabled={!replyText.trim() || actionLoading === review.id || imageUploading}
                                                         className="px-3 py-1.5 text-sm bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50"
                                                     >
-                                                        Gửi phản hồi
+                                                        {actionLoading === review.id ? 'Đang gửi...' : 'Gửi phản hồi'}
                                                     </button>
                                                 </div>
                                             </div>

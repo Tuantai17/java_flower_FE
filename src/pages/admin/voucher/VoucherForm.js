@@ -25,6 +25,7 @@ const VoucherForm = ({ mode = 'create' }) => {
     const [formData, setFormData] = useState({
         code: '',
         description: '',
+        voucherType: 'ORDER', // ORDER: Giảm đơn hàng, SHIPPING: Giảm phí ship
         isPercent: true,
         discountValue: '',
         minOrderValue: '',
@@ -60,6 +61,7 @@ const VoucherForm = ({ mode = 'create' }) => {
                 setFormData({
                     code: voucher.code || '',
                     description: voucher.description || '',
+                    voucherType: voucher.voucherType || voucher.voucher_type || 'ORDER',
                     isPercent: voucher.isPercent ?? voucher.is_percent ?? true,
                     discountValue: voucher.discountValue ?? voucher.discount_value ?? '',
                     minOrderValue: voucher.minOrderValue ?? voucher.min_order_value ?? '',
@@ -138,6 +140,7 @@ const VoucherForm = ({ mode = 'create' }) => {
             const submitData = {
                 code: formData.code.toUpperCase().trim(),
                 description: formData.description,
+                voucherType: formData.voucherType,
                 isPercent: formData.isPercent,
                 discountValue: parseFloat(formData.discountValue),
                 minOrderValue: parseFloat(formData.minOrderValue) || 0,
@@ -237,6 +240,29 @@ const VoucherForm = ({ mode = 'create' }) => {
                             placeholder="VD: Giảm 20% cho đơn hàng từ 200k"
                             className="input-field"
                         />
+                    </div>
+                </div>
+
+                {/* Loại Voucher */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Loại voucher <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            name="voucherType"
+                            value={formData.voucherType}
+                            onChange={handleChange}
+                            className="input-field"
+                        >
+                            <option value="ORDER">🛒 Giảm giá đơn hàng</option>
+                            <option value="SHIPPING">🚚 Giảm phí vận chuyển</option>
+                        </select>
+                        <p className="text-gray-400 text-xs mt-1">
+                            {formData.voucherType === 'ORDER' 
+                                ? 'Voucher sẽ giảm tiền sản phẩm' 
+                                : 'Voucher sẽ giảm phí vận chuyển'}
+                        </p>
                     </div>
                 </div>
 

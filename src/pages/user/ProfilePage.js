@@ -11,17 +11,19 @@ import {
     PencilSquareIcon,
     ShieldCheckIcon,
     CalendarIcon,
+    CameraIcon,
     ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 
 const ProfilePage = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, updateUser } = useAuth();
     const navigate = useNavigate();
 
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [isEditing, setIsEditing] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [editForm, setEditForm] = useState({
         fullName: '',
         phoneNumber: '',
@@ -66,6 +68,60 @@ const ProfilePage = () => {
     const handleEditChange = (e) => {
         const { name, value } = e.target;
         setEditForm(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleAvatarChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate file type and size
+        if (!file.type.startsWith('image/')) {
+            setNotification({
+                show: true,
+                type: 'error',
+                message: 'Vui lòng chọn file ảnh hợp lệ (JPG, PNG, GIF)'
+            });
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            setNotification({
+                show: true,
+                type: 'error',
+                message: 'Kích thước ảnh không được vượt quá 5MB'
+            });
+            return;
+        }
+
+        setUploadingAvatar(true);
+        setNotification({ show: false, type: '', message: '' });
+
+        try {
+            const avatarUrl = await userService.uploadAvatar(file);
+            
+            // Cập nhật state local
+            setProfile(prev => ({ ...prev, avatar: avatarUrl }));
+            
+            // Cập nhật global auth context để header thay đổi theo
+            if (user) {
+                updateUser({ ...user, avatar: avatarUrl });
+            }
+
+            setNotification({
+                show: true,
+                type: 'success',
+                message: 'Cập nhật ảnh đại diện thành công!'
+            });
+        } catch (err) {
+            console.error('Error uploading avatar:', err);
+            setNotification({
+                show: true,
+                type: 'error',
+                message: 'Lỗi khi upload ảnh: ' + (err.response?.data?.message || err.message)
+            });
+        } finally {
+            setUploadingAvatar(false);
+        }
     };
 
     const handleSaveProfile = async () => {
@@ -178,12 +234,40 @@ const ProfilePage = () => {
                     <div className="bg-gradient-to-r from-rose-500 to-pink-500 h-32"></div>
                     <div className="relative px-6 pb-6">
                         {/* Avatar */}
-                        <div className="absolute -top-16 left-6">
-                            <div className="w-32 h-32 rounded-full bg-white p-1 shadow-lg">
-                                <div className="w-full h-full rounded-full bg-gradient-to-br from-rose-400 to-pink-400 flex items-center justify-center">
-                                    <span className="text-4xl font-bold text-white">
-                                        {profile?.fullName?.charAt(0) || profile?.username?.charAt(0) || 'U'}
-                                    </span>
+                        <div className="absolute -top-16 left-6 group">
+                            <div className="w-32 h-32 rounded-full bg-white p-1 shadow-lg relative">
+                                <div className="w-full h-full rounded-full overflow-hidden bg-gradient-to-br from-rose-400 to-pink-400 flex items-center justify-center relative">
+                                    {profile?.avatar ? (
+                                        <img 
+                                            src={profile.avatar} 
+                                            alt="Avatar" 
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <span className="text-4xl font-bold text-white">
+                                            {profile?.fullName?.charAt(0) || profile?.username?.charAt(0) || 'U'}
+                                        </span>
+                                    )}
+                                    
+                                    {/* Upload Overlay */}
+                                    <label 
+                                        htmlFor="avatar-upload" 
+                                        className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
+                                    >
+                                        {uploadingAvatar ? (
+                                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+                                        ) : (
+                                            <CameraIcon className="h-8 w-8 text-white" />
+                                        )}
+                                    </label>
+                                    <input 
+                                        type="file" 
+                                        id="avatar-upload" 
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleAvatarChange}
+                                        disabled={uploadingAvatar}
+                                    />
                                 </div>
                             </div>
                         </div>

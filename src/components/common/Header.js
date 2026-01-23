@@ -17,6 +17,7 @@ import {
     BellIcon,
     TicketIcon,
     ArrowPathIcon,
+    HeartIcon,
 } from '@heroicons/react/24/outline';
 import { UserCircleIcon as UserCircleSolidIcon } from '@heroicons/react/24/solid';
 import categoryApi from '../../api/categoryApi';
@@ -54,6 +55,9 @@ const Header = () => {
 
     // Lấy thông tin user từ AuthContext
     const { user, logout, justLoggedIn, clearLoginNotification } = useAuth();
+    
+    // Lấy số lượng yêu thích từ AppContext
+    const { favoritesCount } = useApp();
 
     // Hiển thị thông báo đăng nhập thành công CHỈ khi vừa thực hiện đăng nhập
     useEffect(() => {
@@ -466,6 +470,20 @@ const Header = () => {
                             </div>
                         )}
 
+                        {/* Wishlist Icon - Desktop */}
+                        <Link 
+                            to="/wishlist" 
+                            className="hidden lg:block relative p-2 hover:bg-pink-50 rounded-full transition-colors"
+                            title="Sản phẩm yêu thích"
+                        >
+                            <HeartIcon className="h-6 w-6 text-gray-700" />
+                            {favoritesCount > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
+                                    {favoritesCount > 9 ? '9+' : favoritesCount}
+                                </span>
+                            )}
+                        </Link>
+
                         {/* User Icon với Dropdown - Desktop */}
                         <div className="hidden lg:block relative" ref={accountDropdownRef}>
                             <button
@@ -474,7 +492,15 @@ const Header = () => {
                             >
                                 {user ? (
                                     <>
-                                        <UserCircleSolidIcon className="h-6 w-6 text-rose-600" />
+                                        {user.avatar ? (
+                                            <img
+                                                src={user.avatar}
+                                                alt="Avatar"
+                                                className="w-8 h-8 rounded-full object-cover border border-rose-200"
+                                            />
+                                        ) : (
+                                            <UserCircleSolidIcon className="h-6 w-6 text-rose-600" />
+                                        )}
                                         <span className="text-sm font-medium text-gray-700 max-w-[100px] truncate hidden xl:block">
                                             {user.fullName || user.username}
                                         </span>
@@ -494,8 +520,16 @@ const Header = () => {
                                             {/* User Info Header */}
                                             <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-rose-50 to-pink-50">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center">
-                                                        <UserCircleSolidIcon className="h-6 w-6 text-white" />
+                                                    <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden bg-rose-500">
+                                                        {user.avatar ? (
+                                                            <img
+                                                                src={user.avatar}
+                                                                alt="Avatar"
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <UserCircleSolidIcon className="h-6 w-6 text-white" />
+                                                        )}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className="font-semibold text-gray-800 truncate">{user.fullName || user.username}</p>
@@ -623,6 +657,24 @@ const Header = () => {
                             </Link>
                         </li>
 
+
+                        {/* Tin Tức */}
+                        <li>
+                            <Link
+                                to="/news"
+                                className={`
+                                    flex items-center gap-1 px-4 py-3.5 font-semibold text-sm uppercase tracking-wide
+                                    transition-all duration-300 border-b-2
+                                    ${isActivePage('/news') || location.pathname.startsWith('/news')
+                                        ? 'text-rose-600 border-rose-500'
+                                        : 'text-gray-700 border-transparent hover:text-rose-600 hover:border-rose-400'
+                                    }
+                                `}
+                            >
+                                Tin Tức
+                            </Link>
+                        </li>
+
                         {/* Dynamic Categories */}
                         {categories.map((category) => (
                             <li
@@ -702,8 +754,16 @@ const Header = () => {
                     <div className="p-4 bg-gradient-to-r from-rose-50 to-pink-50 border-b border-gray-100">
                         {user ? (
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-rose-500 rounded-full flex items-center justify-center">
-                                    <UserCircleSolidIcon className="h-8 w-8 text-white" />
+                                <div className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden bg-rose-500">
+                                    {user.avatar ? (
+                                        <img
+                                            src={user.avatar}
+                                            alt="Avatar"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <UserCircleSolidIcon className="h-8 w-8 text-white" />
+                                    )}
                                 </div>
                                 <div className="flex-1">
                                     <p className="font-semibold text-gray-800">{user.fullName || user.username}</p>
@@ -821,6 +881,28 @@ const Header = () => {
                                 `}
                             >
                                 Sản Phẩm
+                            </Link>
+                        </li>
+
+                        {/* Yêu thích */}
+                        <li className="border-b border-gray-50">
+                            <Link
+                                to="/wishlist"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`
+                                    flex items-center justify-between px-6 py-3.5 font-semibold text-sm uppercase
+                                    ${isActivePage('/wishlist') ? 'text-rose-600 bg-rose-50' : 'text-gray-700'}
+                                `}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <HeartIcon className="h-5 w-5" />
+                                    Yêu thích
+                                </span>
+                                {favoritesCount > 0 && (
+                                    <span className="px-2 py-0.5 bg-rose-500 text-white text-xs rounded-full">
+                                        {favoritesCount}
+                                    </span>
+                                )}
                             </Link>
                         </li>
 

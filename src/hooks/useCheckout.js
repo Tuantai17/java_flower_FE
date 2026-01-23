@@ -5,6 +5,10 @@
  * 
  * Custom hook quản lý state và logic cho trang Checkout
  * Tách biệt logic khỏi component để dễ test và tái sử dụng
+ * 
+ * Version 2.0: Hỗ trợ:
+ * - Tính phí ship động từ API
+ * - 2 voucher: ORDER (giảm tiền hàng) + SHIPPING (giảm phí ship)
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -12,13 +16,14 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import orderService, { ValidationError } from '../services/orderService';
+import { shippingApi } from '../api/shippingApi';
 
 /**
  * Hook quản lý Checkout flow
  */
 export const useCheckout = () => {
     const navigate = useNavigate();
-    const { state, cartTotal, cartCount, clearCart } = useApp();
+    const { state, cartTotal, cartCount, clearCart, showNotification } = useApp();
     const { cart } = state;
     const { user, isAuthenticated } = useAuth();
 
@@ -32,8 +37,33 @@ export const useCheckout = () => {
     // Form errors
     const [errors, setErrors] = useState({});
 
-    // Voucher
-    const [appliedVoucher, setAppliedVoucher] = useState(null);
+    // === VOUCHER STATE (2 loại) ===
+    const [orderVoucherCode, setOrderVoucherCode] = useState('');
+    const [shippingVoucherCode, setShippingVoucherCode] = useState('');
+
+    // === SHIPPING STATE (từ API) ===
+    const [shippingData, setShippingData] = useState({
+        shippingFee: 0,
+        originalFee: 0,
+        isFreeShip: false,
+        freeShipThreshold: 0,
+        amountToFreeShip: 0,
+        estimatedTime: '',
+        zone: null,
+        zoneName: '',
+    });
+    const [shippingLoading, setShippingLoading] = useState(false);
+
+    // === PREVIEW STATE (tổng với voucher) ===
+    const [previewData, setPreviewData] = useState({
+        orderDiscount: 0,
+        shippingDiscount: 0,
+        shippingFinal: 0,
+        grandTotal: 0,
+        warnings: [],
+    });
+    // eslint-disable-next-line no-unused-vars
+    const _setPreviewData = setPreviewData; // Sẽ dùng khi tích hợp API preview
 
     // Loading states
     const [loading, setLoading] = useState(false);
@@ -50,18 +80,6 @@ export const useCheckout = () => {
     const [availableDistricts, setAvailableDistricts] = useState([]);
 
     // === EFFECTS ===
-
-    // Load voucher from session storage
-    useEffect(() => {
-        const savedVoucher = sessionStorage.getItem('appliedVoucher');
-        if (savedVoucher) {
-            try {
-                setAppliedVoucher(JSON.parse(savedVoucher));
-            } catch (e) {
-                console.error('Error parsing voucher:', e);
-            }
-        }
-    }, []);
 
     // Pre-fill form when user data changes
     useEffect(() => {
@@ -87,6 +105,51 @@ export const useCheckout = () => {
         }
     }, [formData.province]);
 
+    // === EFFECT: Tính phí ship từ API khi district thay đổi ===
+    useEffect(() => {
+        if (!formData.district || cartTotal <= 0) {
+            return;
+        }
+
+        const calculateShipping = async () => {
+            setShippingLoading(true);
+            try {
+                const response = await shippingApi.calculate({
+                    city: 'TPHCM',
+                    district: formData.district,
+                    subtotal: cartTotal,
+                    deliveryType: 'STANDARD',
+                });
+
+                if (response.success && response.data) {
+                    setShippingData({
+                        shippingFee: response.data.shippingFee,
+                        originalFee: response.data.originalFee,
+                        isFreeShip: response.data.isFreeShip,
+                        freeShipThreshold: response.data.freeShipThreshold,
+                        amountToFreeShip: response.data.amountToFreeShip,
+                        estimatedTime: response.data.estimatedTime,
+                        zone: response.data.zone,
+                        zoneName: response.data.zoneName,
+                    });
+                }
+            } catch (error) {
+                console.error('Calculate shipping error:', error);
+                // Fallback to local calculation
+                const localFee = orderService.calculateShippingFee(formData.district, cartTotal);
+                setShippingData(prev => ({
+                    ...prev,
+                    shippingFee: localFee,
+                    originalFee: localFee,
+                }));
+            } finally {
+                setShippingLoading(false);
+            }
+        };
+
+        calculateShipping();
+    }, [formData.district, cartTotal]);
+
     // Redirect if cart is empty
     useEffect(() => {
         if (cart.length === 0 && !orderSuccess) {
@@ -95,10 +158,13 @@ export const useCheckout = () => {
     }, [cart, navigate, orderSuccess]);
 
     // === CALCULATED VALUES ===
-
-    const shippingFee = 0; // Free shipping
-    const discountAmount = appliedVoucher?.discountAmount || 0;
-    const finalTotal = Math.max(0, cartTotal - discountAmount + shippingFee);
+    
+    // Sử dụng phí ship từ API (hoặc fallback local)
+    const shippingFee = shippingData.shippingFee;
+    const discountAmount = previewData.orderDiscount + previewData.shippingDiscount;
+    const finalTotal = previewData.grandTotal > 0 
+        ? previewData.grandTotal 
+        : Math.max(0, cartTotal + shippingFee);
 
     // === HANDLERS ===
 
@@ -143,6 +209,65 @@ export const useCheckout = () => {
     }, []);
 
     /**
+     * Áp dụng voucher - gọi API checkout/preview để tính giảm giá
+     */
+    const applyVouchers = useCallback(async () => {
+        if (!formData.district) {
+            showNotification('warning', 'Vui lòng chọn quận/huyện trước');
+            return;
+        }
+
+        if (!orderVoucherCode && !shippingVoucherCode) {
+            showNotification('warning', 'Vui lòng nhập mã giảm giá');
+            return;
+        }
+
+        setShippingLoading(true);
+        try {
+            const response = await shippingApi.checkoutPreview({
+                subtotal: cartTotal,
+                district: formData.district,
+                deliveryType: 'STANDARD',
+                vouchers: {
+                    orderVoucherCode: orderVoucherCode || null,
+                    shippingVoucherCode: shippingVoucherCode || null,
+                },
+            });
+
+            if (response.success && response.data) {
+                setPreviewData({
+                    orderDiscount: response.data.orderDiscount || 0,
+                    shippingDiscount: response.data.shippingDiscount || 0,
+                    shippingFinal: response.data.shippingFinal || shippingData.shippingFee,
+                    grandTotal: response.data.grandTotal || 0,
+                    warnings: response.data.warnings || [],
+                    appliedVouchers: response.data.appliedVouchers || [],
+                });
+
+                // Update shipping fee if applicable
+                if (response.data.shippingFinal !== undefined) {
+                    setShippingData(prev => ({
+                        ...prev,
+                        shippingFee: response.data.shippingFinal,
+                    }));
+                }
+
+                if (response.data.orderDiscount > 0 || response.data.shippingDiscount > 0) {
+                    showNotification('success', 'Đã áp dụng mã giảm giá thành công!');
+                } else if (response.data.warnings?.length > 0) {
+                    showNotification('warning', response.data.warnings[0]);
+                }
+            }
+        } catch (error) {
+            console.error('Apply voucher error:', error);
+            showNotification('error', error.message || 'Không thể áp dụng mã giảm giá');
+        } finally {
+            setShippingLoading(false);
+        }
+    }, [formData.district, orderVoucherCode, shippingVoucherCode, cartTotal, showNotification, shippingData.shippingFee]);
+
+
+    /**
      * Validate form
      */
     const validateForm = useCallback(() => {
@@ -174,10 +299,23 @@ export const useCheckout = () => {
         setLoading(true);
 
         try {
+            // Tạo voucher object từ codes mới
+            const voucherData = {
+                orderVoucherCode: orderVoucherCode || null,
+                shippingVoucherCode: shippingVoucherCode || null,
+            };
+
             const result = await orderService.performCheckout({
-                formData,
+                formData: {
+                    ...formData,
+                    // Thêm voucher codes vào formData
+                    orderVoucherCode,
+                    shippingVoucherCode,
+                    // Thêm phí ship đã tính
+                    shippingFee: shippingData?.shippingFee || 0,
+                },
                 cart,
-                appliedVoucher,
+                appliedVoucher: voucherData, // Truyền voucher data mới
                 onProgress: setLoadingText,
             });
 
@@ -192,7 +330,6 @@ export const useCheckout = () => {
 
             // Success - COD or fallback
             clearCart();
-            sessionStorage.removeItem('appliedVoucher');
             setOrderData(result.orderData);
             setOrderSuccess(true);
 
@@ -216,27 +353,11 @@ export const useCheckout = () => {
         validateForm,
         formData,
         cart,
-        appliedVoucher,
+        orderVoucherCode,
+        shippingVoucherCode,
+        shippingData,
         clearCart,
     ]);
-
-    /**
-     * Apply voucher code
-     */
-    const applyVoucher = useCallback((voucher) => {
-        setAppliedVoucher(voucher);
-        sessionStorage.setItem('appliedVoucher', JSON.stringify(voucher));
-        setFormData(prev => ({ ...prev, voucherCode: voucher.code }));
-    }, []);
-
-    /**
-     * Remove applied voucher
-     */
-    const removeVoucher = useCallback(() => {
-        setAppliedVoucher(null);
-        sessionStorage.removeItem('appliedVoucher');
-        setFormData(prev => ({ ...prev, voucherCode: '' }));
-    }, []);
 
     /**
      * Reset form
@@ -264,12 +385,21 @@ export const useCheckout = () => {
         cartTotal,
         cartCount,
 
-        // Voucher
-        appliedVoucher,
-        discountAmount,
+        // === SHIPPING (từ API) ===
+        shippingData,        // { shippingFee, isFreeShip, freeShipThreshold, estimatedTime, zone, ... }
+        shippingFee,         // Shortcut: shippingData.shippingFee
+        shippingLoading,     // Đang loading shipping
+
+        // === VOUCHER (2 loại) ===
+        orderVoucherCode,
+        shippingVoucherCode,
+        setOrderVoucherCode,
+        setShippingVoucherCode,
+        applyVouchers,       // Function để áp dụng voucher
+        previewData,         // { orderDiscount, shippingDiscount, grandTotal, warnings }
+        discountAmount,      // Tổng giảm giá (order + shipping)
 
         // Calculated values
-        shippingFee,
         finalTotal,
 
         // Auth
@@ -286,8 +416,6 @@ export const useCheckout = () => {
         setFormFields,
         handleSubmit,
         validateForm,
-        applyVoucher,
-        removeVoucher,
         resetForm,
 
         // Setters for direct access

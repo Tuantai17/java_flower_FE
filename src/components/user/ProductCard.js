@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HeartIcon, ShoppingBagIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 import { formatPrice } from '../../utils/formatPrice';
 import { getImageUrl } from '../../utils/imageUrl';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import LoginRequiredModal from '../common/LoginRequiredModal';
 
 /**
  * ProductCard Component
@@ -23,7 +25,9 @@ const ProductCard = ({
     showQuickView = true
 }) => {
     const { addToCart, toggleFavorite, isFavorite, showNotification } = useApp();
+    const { isAuthenticated } = useAuth();
     const navigate = useNavigate();
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     const {
         id,
@@ -97,6 +101,12 @@ const ProductCard = ({
         e.stopPropagation();
 
         if (isOutOfStock) return;
+
+        // Kiểm tra đăng nhập trước khi thêm vào giỏ hàng
+        if (!isAuthenticated) {
+            setShowLoginModal(true);
+            return;
+        }
 
         // Log HATEOAS add-to-cart link nếu có
         const addToCartLink = getHateoasAction('add-to-cart');
@@ -247,6 +257,13 @@ const ProductCard = ({
                     </p>
                 )}
             </div>
+
+            {/* Login Required Modal */}
+            <LoginRequiredModal 
+                isOpen={showLoginModal}
+                onClose={() => setShowLoginModal(false)}
+                message="Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng"
+            />
         </div>
     );
 };

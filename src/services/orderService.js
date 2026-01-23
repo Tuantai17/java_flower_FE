@@ -56,60 +56,43 @@ export const DELIVERY_TIME_SLOTS = [
 ];
 
 /**
- * Danh sách tỉnh/thành phố phổ biến
+ * Danh sách tỉnh/thành phố - CHỈ PHỤC VỤ TP.HCM
  */
 export const PROVINCES = [
     { id: 'hcm', name: 'Hồ Chí Minh' },
-    { id: 'hn', name: 'Hà Nội' },
-    { id: 'dn', name: 'Đà Nẵng' },
-    { id: 'hp', name: 'Hải Phòng' },
-    { id: 'ct', name: 'Cần Thơ' },
-    { id: 'bd', name: 'Bình Dương' },
-    { id: 'dn2', name: 'Đồng Nai' },
-    { id: 'other', name: 'Khác' },
 ];
 
 /**
- * Danh sách quận/huyện theo tỉnh
+ * Danh sách quận/huyện TP.HCM (đầy đủ)
  */
 export const DISTRICTS = {
     hcm: [
-        { id: 'q1', name: 'Quận 1' },
-        { id: 'q2', name: 'Quận 2' },
-        { id: 'q3', name: 'Quận 3' },
-        { id: 'q4', name: 'Quận 4' },
-        { id: 'q5', name: 'Quận 5' },
-        { id: 'q6', name: 'Quận 6' },
-        { id: 'q7', name: 'Quận 7' },
-        { id: 'q8', name: 'Quận 8' },
-        { id: 'q9', name: 'Quận 9' },
-        { id: 'q10', name: 'Quận 10' },
-        { id: 'q11', name: 'Quận 11' },
-        { id: 'q12', name: 'Quận 12' },
-        { id: 'qgv', name: 'Gò Vấp' },
-        { id: 'qbt', name: 'Bình Thạnh' },
-        { id: 'qpn', name: 'Phú Nhuận' },
-        { id: 'qtd', name: 'Thủ Đức' },
-        { id: 'qtp', name: 'Tân Phú' },
-        { id: 'qbtan', name: 'Bình Tân' },
-        { id: 'qcc', name: 'Củ Chi' },
-        { id: 'qhm', name: 'Hóc Môn' },
+        // Nội thành (12 quận)
+        { id: 'q1', name: 'Quận 1', zone: 'inner' },
+        { id: 'q3', name: 'Quận 3', zone: 'inner' },
+        { id: 'q4', name: 'Quận 4', zone: 'inner' },
+        { id: 'q5', name: 'Quận 5', zone: 'inner' },
+        { id: 'q6', name: 'Quận 6', zone: 'inner' },
+        { id: 'q7', name: 'Quận 7', zone: 'inner' },
+        { id: 'q8', name: 'Quận 8', zone: 'inner' },
+        { id: 'q10', name: 'Quận 10', zone: 'inner' },
+        { id: 'q11', name: 'Quận 11', zone: 'inner' },
+        { id: 'qgv', name: 'Quận Gò Vấp', zone: 'inner' },
+        { id: 'qbt', name: 'Quận Bình Thạnh', zone: 'inner' },
+        { id: 'qpn', name: 'Quận Phú Nhuận', zone: 'inner' },
+        { id: 'qtb', name: 'Quận Tân Bình', zone: 'inner' },
+        // Ngoại thành (9 quận/huyện)
+        { id: 'q12', name: 'Quận 12', zone: 'outer' },
+        { id: 'qtd', name: 'TP. Thủ Đức', zone: 'outer' },
+        { id: 'qtp', name: 'Quận Tân Phú', zone: 'outer' },
+        { id: 'qbtan', name: 'Quận Bình Tân', zone: 'outer' },
+        { id: 'hcc', name: 'Huyện Củ Chi', zone: 'outer' },
+        { id: 'hhm', name: 'Huyện Hóc Môn', zone: 'outer' },
+        { id: 'hbc', name: 'Huyện Bình Chánh', zone: 'outer' },
+        { id: 'hnb', name: 'Huyện Nhà Bè', zone: 'outer' },
+        { id: 'hcg', name: 'Huyện Cần Giờ', zone: 'outer' },
     ],
-    hn: [
-        { id: 'hk', name: 'Hoàn Kiếm' },
-        { id: 'bd', name: 'Ba Đình' },
-        { id: 'dd', name: 'Đống Đa' },
-        { id: 'tx', name: 'Thanh Xuân' },
-        { id: 'cg', name: 'Cầu Giấy' },
-        { id: 'ht', name: 'Hai Bà Trưng' },
-        { id: 'hm', name: 'Hoàng Mai' },
-        { id: 'lb', name: 'Long Biên' },
-        { id: 'nl', name: 'Nam Từ Liêm' },
-        { id: 'btl', name: 'Bắc Từ Liêm' },
-    ],
-    default: [
-        { id: 'other', name: 'Khác' },
-    ],
+    default: [],
 };
 
 /**
@@ -117,6 +100,37 @@ export const DISTRICTS = {
  */
 export const getDistrictsByProvince = (provinceId) => {
     return DISTRICTS[provinceId] || DISTRICTS.default;
+};
+
+/**
+ * Kiểm tra khu vực là nội thành hay ngoại thành
+ * @returns 'inner' | 'outer' | null
+ */
+export const getDistrictZone = (districtName) => {
+    const allDistricts = DISTRICTS.hcm;
+    const district = allDistricts.find(d => d.name === districtName);
+    return district?.zone || null;
+};
+
+/**
+ * Tính phí vận chuyển dựa trên quận/huyện và tổng tiền
+ * @param {string} districtName - Tên quận/huyện
+ * @param {number} cartTotal - Tổng tiền giỏ hàng
+ * @returns {number} Phí vận chuyển
+ */
+export const calculateShippingFee = (districtName, cartTotal) => {
+    const zone = getDistrictZone(districtName);
+    
+    if (zone === 'inner') {
+        // Nội thành: Miễn phí từ 500K
+        return cartTotal >= 500000 ? 0 : 25000;
+    } else if (zone === 'outer') {
+        // Ngoại thành: Miễn phí từ 700K
+        return cartTotal >= 700000 ? 0 : 35000;
+    }
+    
+    // Mặc định
+    return 35000;
 };
 
 // ========================================
@@ -302,9 +316,18 @@ export const transformToCheckoutPayload = (formData, appliedVoucher = null) => {
         deliveryDate: formData.deliveryDate,
         deliveryTime: formData.deliveryTime,
 
-        // Khác
+        // Ghi chú
         note: formData.note?.trim() || null,
-        voucherCode: appliedVoucher?.code || formData.voucherCode?.trim() || null,
+
+        // Voucher codes (hỗ trợ 2 loại)
+        voucherCode: appliedVoucher?.code || formData.voucherCode?.trim() || null, // Legacy
+        orderVoucherCode: formData.orderVoucherCode?.trim() || null, // Giảm giá đơn hàng
+        shippingVoucherCode: formData.shippingVoucherCode?.trim() || null, // Giảm phí ship
+
+        // Phí vận chuyển (đã được tính từ API shipping)
+        shippingFee: formData.shippingFee || 0,
+
+        // Thanh toán
         paymentMethod: formData.paymentMethod,
         momoType: formData.momoType || 'wallet', // wallet = QR, card = ATM/Visa
 
@@ -462,6 +485,8 @@ const orderService = {
     PROVINCES,
     DISTRICTS,
     getDistrictsByProvince,
+    getDistrictZone,
+    calculateShippingFee,
 
     // Validation
     validatePhone,

@@ -28,6 +28,10 @@ import { PAYMENT_METHODS } from '../../api/orderApi';
 // Address Autocomplete (không có map, có nút chọn địa chỉ của tôi)
 import AddressAutocomplete from '../../components/common/AddressAutocomplete';
 
+// Checkout Components (Shipping & Voucher)
+import VoucherInputSection from '../../components/checkout/VoucherInputSection';
+import ShippingSummaryCard from '../../components/checkout/ShippingSummaryCard';
+
 // Icons
 import {
     ShoppingBagIcon,
@@ -133,18 +137,39 @@ const CheckoutPage = () => {
                                 note={checkout.formData.note}
                                 onChange={checkout.handleChange}
                             />
+
+                            {/* Voucher Input (2 loại: ORDER + SHIPPING) */}
+                            <VoucherInputSection
+                                orderVoucherCode={checkout.orderVoucherCode}
+                                shippingVoucherCode={checkout.shippingVoucherCode}
+                                onOrderVoucherChange={checkout.setOrderVoucherCode}
+                                onShippingVoucherChange={checkout.setShippingVoucherCode}
+                                onApplyVouchers={checkout.applyVouchers}
+                                previewData={checkout.previewData}
+                                shippingData={checkout.shippingData}
+                                loading={checkout.shippingLoading}
+                            />
                         </div>
 
                         {/* Right Column - Order Summary */}
-                        <div className="lg:col-span-1">
+                        <div className="lg:col-span-1 space-y-4">
+                            {/* Shipping Summary Card */}
+                            <ShippingSummaryCard
+                                shippingData={checkout.shippingData}
+                                cartTotal={checkout.cartTotal}
+                                loading={checkout.shippingLoading}
+                            />
+
+                            {/* Order Summary */}
                             <OrderSummary
                                 cart={checkout.cart}
                                 cartTotal={checkout.cartTotal}
                                 cartCount={checkout.cartCount}
                                 discountAmount={checkout.discountAmount}
                                 shippingFee={checkout.shippingFee}
+                                shippingData={checkout.shippingData}
                                 finalTotal={checkout.finalTotal}
-                                appliedVoucher={checkout.appliedVoucher}
+                                previewData={checkout.previewData}
                                 loading={checkout.loading}
                                 loadingText={checkout.loadingText}
                             />
@@ -313,7 +338,7 @@ const RecipientInfoSection = memo(({ formData, errors, onChange, onCopyFromSende
 
 const ShippingAddressSection = memo(({ formData, errors, onChange, provinces, districts, onAddressSelect, userAddress }) => (
     <div className="bg-white rounded-2xl shadow-sm p-6">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <MapPinIcon className="h-5 w-5 text-blue-500" />
             </div>
@@ -321,6 +346,20 @@ const ShippingAddressSection = memo(({ formData, errors, onChange, provinces, di
                 <h2 className="text-xl font-semibold text-gray-800">Địa chỉ giao hàng</h2>
                 <p className="text-sm text-gray-500">Nơi giao hoa đến cho người nhận</p>
             </div>
+        </div>
+
+        {/* Thông báo khu vực phục vụ */}
+        <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+            <p className="text-sm text-blue-700 flex items-start gap-2">
+                <span className="text-lg">📍</span>
+                <span>
+                    <strong>Khu vực phục vụ:</strong> Hiện tại FlowerCorner chỉ giao hàng trong <strong>TP. Hồ Chí Minh</strong>.
+                    <br />
+                    <span className="text-blue-600">
+                        • Nội thành: Miễn phí từ 500.000đ | Ngoại thành: Miễn phí từ 700.000đ
+                    </span>
+                </span>
+            </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -628,83 +667,101 @@ const OrderSummary = memo(({
     cartCount,
     discountAmount,
     shippingFee,
+    shippingData,
     finalTotal,
-    appliedVoucher,
+    previewData,
     loading,
     loadingText,
-}) => (
-    <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-24">
-        <h3 className="text-xl font-semibold text-gray-800 mb-6">
-            Đơn hàng của bạn
-        </h3>
+}) => {
+    const orderDiscount = previewData?.orderDiscount || 0;
+    const shippingDiscount = previewData?.shippingDiscount || 0;
+    const totalDiscount = orderDiscount + shippingDiscount;
+    const isFreeShip = shippingData?.isFreeShip || shippingFee === 0;
 
-        {/* Cart Items */}
-        <div className="space-y-4 max-h-64 overflow-y-auto mb-6 pr-2">
-            {cart.map((item) => (
-                <CartItemMini key={item.id} item={item} />
-            ))}
-        </div>
+    return (
+        <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-24">
+            <h3 className="text-xl font-semibold text-gray-800 mb-6">
+                Đơn hàng của bạn
+            </h3>
 
-        {/* Summary Details */}
-        <div className="space-y-3 py-4 border-y border-gray-100">
-            <div className="flex justify-between text-gray-600">
-                <span>Tạm tính ({cartCount} sản phẩm)</span>
-                <span>{formatPrice(cartTotal)}</span>
+            {/* Cart Items */}
+            <div className="space-y-4 max-h-64 overflow-y-auto mb-6 pr-2">
+                {cart.map((item) => (
+                    <CartItemMini key={item.id} item={item} />
+                ))}
             </div>
 
-            {appliedVoucher && discountAmount > 0 && (
-                <div className="flex justify-between text-green-600">
-                    <span>Giảm giá ({appliedVoucher.code})</span>
-                    <span>-{formatPrice(discountAmount)}</span>
+            {/* Summary Details */}
+            <div className="space-y-3 py-4 border-y border-gray-100">
+                <div className="flex justify-between text-gray-600">
+                    <span>Tạm tính ({cartCount} sản phẩm)</span>
+                    <span>{formatPrice(cartTotal)}</span>
                 </div>
-            )}
 
-            <div className="flex justify-between text-gray-600">
-                <span>Phí vận chuyển</span>
-                <span className="text-green-600 font-medium">
-                    {shippingFee > 0 ? formatPrice(shippingFee) : 'Miễn phí'}
-                </span>
+                {/* ORDER Discount */}
+                {orderDiscount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                        <span>🎁 Giảm giá đơn hàng</span>
+                        <span>-{formatPrice(orderDiscount)}</span>
+                    </div>
+                )}
+
+                {/* Shipping Fee */}
+                <div className="flex justify-between text-gray-600">
+                    <span>Phí vận chuyển</span>
+                    <span className={isFreeShip ? 'text-green-600 font-medium' : ''}>
+                        {isFreeShip ? 'Miễn phí' : formatPrice(shippingFee)}
+                    </span>
+                </div>
+
+                {/* SHIPPING Discount */}
+                {shippingDiscount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                        <span>🚚 Giảm phí ship</span>
+                        <span>-{formatPrice(shippingDiscount)}</span>
+                    </div>
+                )}
             </div>
-        </div>
 
-        {/* Total */}
-        <div className="py-4">
-            <div className="flex justify-between text-xl font-bold">
-                <span>Tổng cộng</span>
-                <span className="text-rose-600">{formatPrice(finalTotal)}</span>
+            {/* Total */}
+            <div className="py-4">
+                <div className="flex justify-between text-xl font-bold">
+                    <span>Tổng cộng</span>
+                    <span className="text-rose-600">{formatPrice(finalTotal)}</span>
+                </div>
+                {totalDiscount > 0 && (
+                    <p className="text-green-600 text-sm mt-1 text-right">
+                        🎉 Bạn tiết kiệm được {formatPrice(totalDiscount)}
+                    </p>
+                )}
             </div>
-            {appliedVoucher && discountAmount > 0 && (
-                <p className="text-green-600 text-sm mt-1 text-right">
-                    Bạn tiết kiệm được {formatPrice(discountAmount)}
-                </p>
-            )}
+
+            {/* Submit Button */}
+            <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold hover:from-rose-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+                {loading ? (
+                    <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        {loadingText || 'Đang xử lý...'}
+                    </>
+                ) : (
+                    <>
+                        <ShieldCheckIcon className="h-5 w-5" />
+                        Đặt hàng
+                    </>
+                )}
+            </button>
+
+            {/* Security Note */}
+            <p className="text-center text-sm text-gray-500 mt-4">
+                🔒 Thanh toán an toàn & bảo mật
+            </p>
         </div>
-
-        {/* Submit Button */}
-        <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold hover:from-rose-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-            {loading ? (
-                <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    {loadingText || 'Đang xử lý...'}
-                </>
-            ) : (
-                <>
-                    <ShieldCheckIcon className="h-5 w-5" />
-                    Đặt hàng
-                </>
-            )}
-        </button>
-
-        {/* Security Note */}
-        <p className="text-center text-sm text-gray-500 mt-4">
-            🔒 Thanh toán an toàn & bảo mật
-        </p>
-    </div>
-));
+    );
+});
 
 // ========================================
 // CART ITEM MINI

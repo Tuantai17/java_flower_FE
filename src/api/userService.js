@@ -51,9 +51,53 @@ const userService = {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await axiosInstance.post('/users/avatar', formData, {
+        const response = await axiosInstance.post('/users/me/avatar', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
+            },
+        });
+        return unwrapResponse(response);
+    },
+
+    /**
+     * Upload avatar cho Admin (sử dụng adminToken)
+     * Endpoint: POST /api/users/me/avatar
+     * @param {File} file - File ảnh
+     */
+    uploadAvatarAdmin: async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Explicit use adminToken
+        const adminToken = localStorage.getItem('adminToken');
+        if (!adminToken) {
+            throw new Error('Admin chưa đăng nhập');
+        }
+
+        const response = await axiosInstance.post('/users/me/avatar', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'Authorization': `Bearer ${adminToken}`,
+            },
+        });
+        return unwrapResponse(response);
+    },
+
+    /**
+     * Cập nhật thông tin Admin profile (sử dụng adminToken)
+     * Endpoint: PUT /api/users/me
+     * @param {object} profileData - { fullName, phoneNumber, address, email }
+     */
+    updateProfileAdmin: async (profileData) => {
+        // Explicit use adminToken
+        const adminToken = localStorage.getItem('adminToken');
+        if (!adminToken) {
+            throw new Error('Admin chưa đăng nhập');
+        }
+
+        const response = await axiosInstance.put('/users/me', profileData, {
+            headers: {
+                'Authorization': `Bearer ${adminToken}`,
             },
         });
         return unwrapResponse(response);

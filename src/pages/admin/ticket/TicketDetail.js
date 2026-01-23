@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getTicketForAdmin, replyToTicket, updateTicketStatus, assignTicket } from '../../../api/contactApi';
+import uploadApi from '../../../api/uploadApi';
 import ticketWebSocketService from '../../../services/ticketWebSocketService';
 import {
     ArrowLeftIcon,
@@ -12,6 +13,8 @@ import {
     EnvelopeIcon,
     ClockIcon,
     CheckBadgeIcon,
+    PhotoIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 const TicketDetail = () => {
@@ -20,9 +23,12 @@ const TicketDetail = () => {
     const [ticket, setTicket] = useState(null);
     const [loading, setLoading] = useState(true);
     const [replyContent, setReplyContent] = useState('');
+    const [replyImages, setReplyImages] = useState([]);
+    const [uploading, setUploading] = useState(false);
     const [sending, setSending] = useState(false);
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         loadTicket();
@@ -93,11 +99,15 @@ const TicketDetail = () => {
 
         try {
             setSending(true);
-            console.log('Sending reply:', { content: replyContent.trim() });
-            const response = await replyToTicket(id, { content: replyContent.trim() });
+            console.log('Sending reply:', { content: replyContent.trim(), images: replyImages });
+            const response = await replyToTicket(id, { 
+                content: replyContent.trim(),
+                images: replyImages.length > 0 ? replyImages : null
+            });
             console.log('Reply response:', response);
             if (response.success) {
                 setReplyContent('');
+                setReplyImages([]);
                 await loadTicket();
             } else {
                 console.error('Reply failed:', response.message);
@@ -110,6 +120,37 @@ const TicketDetail = () => {
         } finally {
             setSending(false);
         }
+    };
+
+    const handleImageUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        if (replyImages.length + files.length > 5) {
+            alert('Tối đa 5 ảnh');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const uploadPromises = files.map(async (file) => {
+                const result = await uploadApi.uploadProductImage(file);
+                return uploadApi.extractUrl(result);
+            });
+            const uploadedUrls = await Promise.all(uploadPromises);
+            const validUrls = uploadedUrls.filter(url => url);
+            setReplyImages(prev => [...prev, ...validUrls]);
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Lỗi upload ảnh');
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleRemoveImage = (index) => {
+        setReplyImages(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleStatusChange = async (newStatus) => {
@@ -251,6 +292,20 @@ const TicketDetail = () => {
                                     <p className={`whitespace-pre-wrap ${message.senderType === 'SYSTEM' ? 'text-sm' : ''}`}>
                                         {message.content}
                                     </p>
+                                    {/* Message Images */}
+                                    {message.images && message.images.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {message.images.map((img, idx) => (
+                                                <img
+                                                    key={idx}
+                                                    src={img}
+                                                    alt={`Attachment ${idx + 1}`}
+                                                    className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80"
+                                                    onClick={() => window.open(img, '_blank')}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
                                     <p className={`text-xs mt-2 ${
                                         message.senderType === 'ADMIN' ? 'text-pink-200' : 'text-gray-400'
                                     }`}>
@@ -266,35 +321,80 @@ const TicketDetail = () => {
                 {/* Reply Input */}
                 {ticket.status !== 'CLOSED' && (
                     <div className="bg-white border-t p-4">
-                        <form onSubmit={handleReply} className="max-w-3xl mx-auto flex gap-3">
-                            <textarea
-                                value={replyContent}
-                                onChange={(e) => setReplyContent(e.target.value)}
-                                placeholder="Nhập phản hồi..."
-                                rows={2}
-                                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        handleReply(e);
-                                    }
-                                }}
-                            />
-                            <button
-                                type="submit"
-                                disabled={!replyContent.trim() || sending}
-                                className={`p-4 rounded-xl transition-all ${
-                                    replyContent.trim() && !sending
-                                        ? 'bg-pink-500 text-white hover:bg-pink-600'
-                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                }`}
-                            >
-                                {sending ? (
-                                    <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <PaperAirplaneIcon className="h-6 w-6" />
-                                )}
-                            </button>
+                        <form onSubmit={handleReply} className="max-w-3xl mx-auto">
+                            {/* Image Preview */}
+                            {replyImages.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {replyImages.map((img, index) => (
+                                        <div key={index} className="relative group">
+                                            <img
+                                                src={img}
+                                                alt={`Preview ${index + 1}`}
+                                                className="w-16 h-16 object-cover rounded-lg"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveImage(index)}
+                                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="flex gap-3">
+                                {/* Image Upload Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploading || replyImages.length >= 5}
+                                    className="p-4 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                                    title="Đính kèm ảnh"
+                                >
+                                    {uploading ? (
+                                        <div className="h-6 w-6 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <PhotoIcon className="h-6 w-6" />
+                                    )}
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={handleImageUpload}
+                                    className="hidden"
+                                />
+                                <textarea
+                                    value={replyContent}
+                                    onChange={(e) => setReplyContent(e.target.value)}
+                                    placeholder="Nhập phản hồi..."
+                                    rows={2}
+                                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleReply(e);
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!replyContent.trim() || sending || uploading}
+                                    className={`p-4 rounded-xl transition-all ${
+                                        replyContent.trim() && !sending && !uploading
+                                            ? 'bg-pink-500 text-white hover:bg-pink-600'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    }`}
+                                >
+                                    {sending ? (
+                                        <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <PaperAirplaneIcon className="h-6 w-6" />
+                                    )}
+                                </button>
+                            </div>
                         </form>
                     </div>
                 )}

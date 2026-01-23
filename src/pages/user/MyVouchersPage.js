@@ -246,7 +246,7 @@ const SavedVoucherCard = ({ voucher, formatDate, onUnsave }) => {
             case 'USED':
                 return (
                     <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded-full">
-                        Đã sử dụng
+                        Đã sử dụng hết
                     </span>
                 );
             default:
@@ -259,6 +259,11 @@ const SavedVoucherCard = ({ voucher, formatDate, onUnsave }) => {
     };
 
     const isDisabled = voucher.status === 'EXPIRED' || voucher.status === 'USED';
+    
+    // Lấy số lượng (mặc định 1 nếu backend chưa trả về)
+    const quantity = voucher.quantity || 1;
+    const usedCount = voucher.usedCount || 0;
+    const remainingUses = voucher.remainingUses || (quantity - usedCount);
 
     return (
         <div className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all ${
@@ -266,12 +271,18 @@ const SavedVoucherCard = ({ voucher, formatDate, onUnsave }) => {
         }`}>
             <div className="flex">
                 {/* Left - Ticket Icon */}
-                <div className={`flex-shrink-0 w-24 flex flex-col items-center justify-center ${
+                <div className={`flex-shrink-0 w-28 flex flex-col items-center justify-center py-4 ${
                     isDisabled 
                         ? 'bg-gray-200' 
                         : 'bg-gradient-to-br from-rose-500 to-pink-500'
                 }`}>
-                    <TicketIcon className={`h-8 w-8 ${isDisabled ? 'text-gray-400' : 'text-white'}`} />
+                    <TicketIcon className={`h-7 w-7 ${isDisabled ? 'text-gray-400' : 'text-white'}`} />
+                    {/* Luôn hiển thị số lượng còn lại */}
+                    <div className={`mt-2 text-center ${isDisabled ? 'text-gray-400' : 'text-white'}`}>
+                        <span className="text-xs opacity-80">Còn lại</span>
+                        <div className="font-bold text-xl">{remainingUses}/{quantity}</div>
+                        <span className="text-xs opacity-80">lượt dùng</span>
+                    </div>
                 </div>
 
                 {/* Right - Info */}

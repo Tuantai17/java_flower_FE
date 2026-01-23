@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getTicketDetail, sendTicketMessage } from '../../api/contactApi';
+import uploadApi from '../../api/uploadApi';
 import ticketWebSocketService from '../../services/ticketWebSocketService';
 import Breadcrumb from '../../components/user/Breadcrumb';
 import {
@@ -9,6 +10,7 @@ import {
     UserCircleIcon,
     ShieldCheckIcon,
     InformationCircleIcon,
+    PhotoIcon,
 } from '@heroicons/react/24/outline';
 
 const TicketDetailPage = () => {
@@ -17,8 +19,11 @@ const TicketDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [newMessage, setNewMessage] = useState('');
+    const [messageImages, setMessageImages] = useState([]);
+    const [uploading, setUploading] = useState(false);
     const [sending, setSending] = useState(false);
     const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         loadTicket();
@@ -92,9 +97,10 @@ const TicketDetailPage = () => {
 
         try {
             setSending(true);
-            const response = await sendTicketMessage(id, newMessage.trim());
+            const response = await sendTicketMessage(id, newMessage.trim(), messageImages);
             if (response.success) {
                 setNewMessage('');
+                setMessageImages([]);
                 // Không cần reload - WebSocket sẽ tự thêm message
             }
         } catch (err) {
@@ -102,6 +108,37 @@ const TicketDetailPage = () => {
         } finally {
             setSending(false);
         }
+    };
+
+    const handleImageUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        if (messageImages.length + files.length > 5) {
+            alert('Tối đa 5 ảnh');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const uploadPromises = files.map(async (file) => {
+                const result = await uploadApi.uploadProductImage(file);
+                return uploadApi.extractUrl(result);
+            });
+            const uploadedUrls = await Promise.all(uploadPromises);
+            const validUrls = uploadedUrls.filter(url => url);
+            setMessageImages(prev => [...prev, ...validUrls]);
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Lỗi upload ảnh');
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleRemoveImage = (index) => {
+        setMessageImages(prev => prev.filter((_, i) => i !== index));
     };
 
     const getStatusColor = (status) => {
@@ -237,6 +274,20 @@ const TicketDetailPage = () => {
                                     <p className={`whitespace-pre-wrap ${message.senderType === 'SYSTEM' ? 'text-sm' : ''}`}>
                                         {message.content}
                                     </p>
+                                    {/* Message Images */}
+                                    {message.images && message.images.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {message.images.map((img, idx) => (
+                                                <img
+                                                    key={idx}
+                                                    src={img}
+                                                    alt={`Attachment ${idx + 1}`}
+                                                    className="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80"
+                                                    onClick={() => window.open(img, '_blank')}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
                                     <p className={`text-xs mt-2 ${
                                         message.senderType === 'USER' ? 'text-pink-200' : 'text-gray-400'
                                     }`}>
@@ -255,7 +306,50 @@ const TicketDetailPage = () => {
                 <div className="bg-white border-t shadow-lg">
                     <div className="container-custom py-4">
                         <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto">
+                            {/* Image Preview */}
+                            {messageImages.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {messageImages.map((img, index) => (
+                                        <div key={index} className="relative group">
+                                            <img
+                                                src={img}
+                                                alt={`Preview ${index + 1}`}
+                                                className="w-14 h-14 object-cover rounded-lg"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveImage(index)}
+                                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             <div className="flex gap-3">
+                                {/* Image Upload Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploading || messageImages.length >= 5}
+                                    className="p-3 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                                    title="Đính kèm ảnh"
+                                >
+                                    {uploading ? (
+                                        <div className="h-6 w-6 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <PhotoIcon className="h-6 w-6" />
+                                    )}
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={handleImageUpload}
+                                    className="hidden"
+                                />
                                 <div className="flex-1 relative">
                                     <textarea
                                         value={newMessage}
@@ -273,9 +367,9 @@ const TicketDetailPage = () => {
                                 </div>
                                 <button
                                     type="submit"
-                                    disabled={!newMessage.trim() || sending}
+                                    disabled={!newMessage.trim() || sending || uploading}
                                     className={`p-3 rounded-xl transition-all ${
-                                        newMessage.trim() && !sending
+                                        newMessage.trim() && !sending && !uploading
                                             ? 'bg-pink-500 text-white hover:bg-pink-600'
                                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                     }`}

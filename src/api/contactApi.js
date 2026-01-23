@@ -28,10 +28,14 @@ export const getTicketDetail = async (id) => {
 
 /**
  * Gửi tin nhắn mới vào ticket
+ * @param {number} id - Ticket ID
+ * @param {string} content - Nội dung tin nhắn
+ * @param {string[]} images - Danh sách URL ảnh đính kèm
  */
-export const sendTicketMessage = async (id, content) => {
+export const sendTicketMessage = async (id, content, images = []) => {
   const response = await api.post(`/contact/tickets/${id}/messages`, {
     content,
+    images: images.length > 0 ? images : null,
   });
   return response.data;
 };
@@ -72,6 +76,8 @@ export const updateTicketStatus = async (id, status) => {
 
 /**
  * Admin phản hồi ticket
+ * @param {number} id - Ticket ID
+ * @param {object} data - { content, images, newStatus }
  */
 export const replyToTicket = async (id, data) => {
   const response = await api.post(`/admin/tickets/${id}/reply`, data);

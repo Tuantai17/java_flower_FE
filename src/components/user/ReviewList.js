@@ -245,6 +245,24 @@ const ReviewItem = ({ review }) => {
                     <p className="text-sm text-gray-700">
                         {review.adminReply}
                     </p>
+                    {/* Admin Reply Images */}
+                    {review.adminReplyImages && review.adminReplyImages.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {review.adminReplyImages.map((img, idx) => (
+                                <div
+                                    key={idx}
+                                    className="w-16 h-16 rounded-lg overflow-hidden border border-rose-200"
+                                >
+                                    <img
+                                        src={img}
+                                        alt={`Reply ${idx + 1}`}
+                                        className="w-full h-full object-cover cursor-pointer hover:opacity-90"
+                                        onClick={() => window.open(img, '_blank')}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

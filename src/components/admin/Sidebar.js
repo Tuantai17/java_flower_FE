@@ -13,6 +13,8 @@ import {
     ArchiveBoxIcon,
     StarIcon,
     PhotoIcon,
+    TruckIcon,
+    DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
@@ -40,6 +42,11 @@ const Sidebar = () => {
             icon: TicketIcon,
         },
         {
+            title: 'Phí vận chuyển',
+            path: '/admin/shipping-rules',
+            icon: TruckIcon,
+        },
+        {
             title: 'Đơn hàng',
             path: '/admin/orders',
             icon: ShoppingCartIcon,
@@ -65,7 +72,12 @@ const Sidebar = () => {
             icon: PhotoIcon,
         },
         {
-            title: 'Thống kê',
+            title: 'Tin tuc',
+            path: '/admin/articles',
+            icon: DocumentTextIcon,
+        },
+        {
+            title: 'Thong ke',
             path: '/admin/analytics',
             icon: ChartBarIcon,
         },

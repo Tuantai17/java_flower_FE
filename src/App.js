@@ -37,6 +37,15 @@ import MyTicketsPage from './pages/user/MyTicketsPage';
 import TicketDetailPage from './pages/user/TicketDetailPage';
 import UserNotificationsPage from './pages/user/UserNotificationsPage';
 import ChangePasswordPage from './pages/user/ChangePasswordPage';
+import NewsPage from './pages/NewsPage';
+import NewsDetailPage from './pages/NewsDetailPage';
+import PrivacyPolicyPage from './pages/user/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/user/TermsOfServicePage';
+import OrderGuidePage from './pages/user/OrderGuidePage';
+import ShippingPolicyPage from './pages/user/ShippingPolicyPage';
+import ReturnPolicyPage from './pages/user/ReturnPolicyPage';
+import FAQPage from './pages/user/FAQPage';
+import WishlistPage from './pages/user/WishlistPage';
 
 
 // AUTH Pages (User)
@@ -71,6 +80,8 @@ import TicketList from './pages/admin/ticket/TicketList';
 import TicketDetail from './pages/admin/ticket/TicketDetail';
 import NotificationsPage from './pages/admin/NotificationsPage';
 import AdminProfilePage from './pages/admin/profile/AdminProfilePage';
+import { ShippingRuleList, ShippingRuleForm } from './pages/admin/shipping';
+import { ArticleList, ArticleForm, ArticleAIGenerate, ArticleImport, ArticleDetail } from './pages/admin/article';
 
 // Global Components
 import GlobalNotification from './components/common/GlobalNotification';
@@ -98,11 +109,30 @@ function App() {
                   <Route path="category/:id" element={<CategoryPage />} />
                   <Route path="search" element={<SearchResultPage />} />
                   <Route path="about" element={<AboutPage />} />
+                  <Route path="gioi-thieu" element={<AboutPage />} />
                   <Route path="contact" element={<ContactPage />} />
+                  <Route path="lien-he" element={<ContactPage />} />
+                  <Route path="privacy" element={<PrivacyPolicyPage />} />
+                  <Route path="chinh-sach-bao-mat" element={<PrivacyPolicyPage />} />
+                  <Route path="terms" element={<TermsOfServicePage />} />
+                  <Route path="dieu-khoan-su-dung" element={<TermsOfServicePage />} />
+                  <Route path="guide" element={<OrderGuidePage />} />
+                  <Route path="huong-dan-dat-hang" element={<OrderGuidePage />} />
+                  <Route path="shipping" element={<ShippingPolicyPage />} />
+                  <Route path="chinh-sach-van-chuyen" element={<ShippingPolicyPage />} />
+                  <Route path="return-policy" element={<ReturnPolicyPage />} />
+                  <Route path="chinh-sach-doi-tra" element={<ReturnPolicyPage />} />
+                  <Route path="faq" element={<FAQPage />} />
+                  <Route path="cau-hoi-thuong-gap" element={<FAQPage />} />
+
+                  <Route path="news" element={<NewsPage />} />
+                  <Route path="news/:slug" element={<NewsDetailPage />} />
                   <Route path="my-tickets" element={<MyTicketsPage />} />
                   <Route path="tickets/:id" element={<TicketDetailPage />} />
                   <Route path="vouchers" element={<VoucherPage />} />
                   <Route path="my-vouchers" element={<MyVouchersPage />} />
+                  <Route path="wishlist" element={<WishlistPage />} />
+                  <Route path="yeu-thich" element={<WishlistPage />} />
 
                   {/* USER ACCOUNT */}
                   <Route path="account" element={<ProfilePage />} />
@@ -168,6 +198,11 @@ function App() {
                   <Route path="vouchers/create" element={<VoucherCreate />} />
                   <Route path="vouchers/edit/:id" element={<VoucherEdit />} />
 
+                  {/* SHIPPING RULES */}
+                  <Route path="shipping-rules" element={<ShippingRuleList />} />
+                  <Route path="shipping-rules/create" element={<ShippingRuleForm mode="create" />} />
+                  <Route path="shipping-rules/edit/:id" element={<ShippingRuleForm mode="edit" />} />
+
                   {/* ORDERS */}
                   <Route path="orders" element={<AdminOrderList />} />
                   <Route path="orders/:id" element={<AdminOrderDetail />} />
@@ -195,6 +230,14 @@ function App() {
 
                   {/* NOTIFICATIONS */}
                   <Route path="notifications" element={<NotificationsPage />} />
+
+                  {/* ARTICLES / NEWS */}
+                  <Route path="articles" element={<ArticleList />} />
+                  <Route path="articles/create" element={<ArticleForm />} />
+                  <Route path="articles/edit/:id" element={<ArticleForm />} />
+                  <Route path="articles/detail/:id" element={<ArticleDetail />} />
+                  <Route path="articles/ai-generate" element={<ArticleAIGenerate />} />
+                  <Route path="articles/import" element={<ArticleImport />} />
 
                   {/* SETTINGS */}
                   <Route path="settings" element={<SettingsPage />} />

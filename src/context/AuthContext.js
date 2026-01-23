@@ -89,6 +89,7 @@ export const AuthProvider = ({ children }) => {
       justLoggedIn,
       clearLoginNotification,
       isAuthenticated,
+      updateUser: setUser, // Cho phép cập nhật user state từ bên ngoài
     }}>
       {children}
     </AuthContext.Provider>

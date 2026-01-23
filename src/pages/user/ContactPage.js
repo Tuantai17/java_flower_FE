@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Breadcrumb from '../../components/user/Breadcrumb';
 import { createTicket } from '../../api/contactApi';
+import uploadApi from '../../api/uploadApi';
 import {
     PhoneIcon,
     EnvelopeIcon,
@@ -9,6 +10,7 @@ import {
     ClockIcon,
     CheckCircleIcon,
     TicketIcon,
+    PhotoIcon,
 } from '@heroicons/react/24/outline';
 
 const ContactPage = () => {
@@ -19,10 +21,13 @@ const ContactPage = () => {
         subject: '',
         message: '',
     });
+    const [images, setImages] = useState([]);
+    const [uploading, setUploading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [ticketCode, setTicketCode] = useState('');
+    const fileInputRef = useRef(null);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -53,6 +58,7 @@ const ContactPage = () => {
                 subject: formData.subject ? getCategoryDisplayName(formData.subject) : 'Liên hệ chung',
                 category: categoryMap[formData.subject] || 'OTHER',
                 message: formData.message,
+                images: images.length > 0 ? images : null,
             };
 
             const response = await createTicket(requestData);
@@ -61,6 +67,7 @@ const ContactPage = () => {
                 setTicketCode(response.data.ticketCode);
                 setSubmitted(true);
                 setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+                setImages([]);
             } else {
                 setError(response.message || 'Có lỗi xảy ra, vui lòng thử lại');
             }
@@ -70,6 +77,37 @@ const ContactPage = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleImageUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        if (images.length + files.length > 5) {
+            alert('Tối đa 5 ảnh');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const uploadPromises = files.map(async (file) => {
+                const result = await uploadApi.uploadProductImage(file);
+                return uploadApi.extractUrl(result);
+            });
+            const uploadedUrls = await Promise.all(uploadPromises);
+            const validUrls = uploadedUrls.filter(url => url);
+            setImages(prev => [...prev, ...validUrls]);
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Lỗi upload ảnh');
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleRemoveImage = (index) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
     };
 
     const getCategoryDisplayName = (value) => {
@@ -319,16 +357,69 @@ const ContactPage = () => {
                                             value={formData.message}
                                             onChange={handleChange}
                                             required
-                                            rows={6}
+                                            rows={4}
                                             placeholder="Nhập nội dung tin nhắn..."
                                             className="input-field resize-none"
                                         />
                                     </div>
 
+                                    {/* Image Upload Section */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Ảnh đính kèm (tối đa 5 ảnh)
+                                        </label>
+                                        <div className="flex flex-wrap gap-3">
+                                            {/* Preview images */}
+                                            {images.map((img, index) => (
+                                                <div key={index} className="relative group">
+                                                    <img
+                                                        src={img}
+                                                        alt={`Preview ${index + 1}`}
+                                                        className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveImage(index)}
+                                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            
+                                            {/* Add image button */}
+                                            {images.length < 5 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    disabled={uploading}
+                                                    className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-pink-400 hover:text-pink-500 transition-colors"
+                                                >
+                                                    {uploading ? (
+                                                        <div className="w-5 h-5 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <PhotoIcon className="h-6 w-6" />
+                                                            <span className="text-xs mt-1">Thêm ảnh</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={handleImageUpload}
+                                            className="hidden"
+                                        />
+                                    </div>
+
                                     <button
                                         type="submit"
-                                        disabled={loading}
-                                        className={`btn-primary w-full md:w-auto ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                        disabled={loading || uploading}
+                                        className={`btn-primary w-full md:w-auto ${loading || uploading ? 'opacity-70 cursor-not-allowed' : ''}`}
                                     >
                                         {loading ? (
                                             <span className="flex items-center gap-2">
