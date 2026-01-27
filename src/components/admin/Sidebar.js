@@ -15,6 +15,7 @@ import {
     PhotoIcon,
     TruckIcon,
     DocumentTextIcon,
+    ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
@@ -65,6 +66,11 @@ const Sidebar = () => {
             title: 'Đánh giá',
             path: '/admin/reviews',
             icon: StarIcon,
+        },
+        {
+            title: 'Hỗ trợ',
+            path: '/admin/tickets',
+            icon: ChatBubbleLeftRightIcon,
         },
         {
             title: 'Banner',

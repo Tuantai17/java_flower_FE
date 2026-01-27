@@ -16,6 +16,10 @@ import reviewApi from '../../../api/reviewApi';
  * Tabs chứa:
  * - Mô tả chi tiết sản phẩm
  * - Đánh giá của khách hàng (Stats + List)
+ * 
+ * Props:
+ * - product: Thông tin sản phẩm
+ * - initialTab: Tab mặc định ('description' | 'reviews')
  */
 
 const TABS = [
@@ -23,10 +27,17 @@ const TABS = [
     { id: 'reviews', label: 'Đánh giá', icon: StarOutlineIcon },
 ];
 
-const ProductDetailTabs = ({ product }) => {
-    const [activeTab, setActiveTab] = useState('description');
+const ProductDetailTabs = ({ product, initialTab = 'description' }) => {
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [reviewStats, setReviewStats] = useState(null);
     const [statsLoading, setStatsLoading] = useState(true);
+
+    // Update active tab when initialTab prop changes (e.g., from URL hash)
+    useEffect(() => {
+        if (initialTab && (initialTab === 'description' || initialTab === 'reviews')) {
+            setActiveTab(initialTab);
+        }
+    }, [initialTab]);
 
     // Fetch review stats when component mounts
     useEffect(() => {

@@ -22,10 +22,12 @@ import {
 import { UserCircleIcon as UserCircleSolidIcon } from '@heroicons/react/24/solid';
 import categoryApi from '../../api/categoryApi';
 import productApi from '../../api/productApi';
+import { getUserNotifications, getUserUnreadCount, userMarkAllAsRead } from '../../api/notificationApi';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import CartIcon from './CartIcon';
 import ticketWebSocketService from '../../services/ticketWebSocketService';
+
 
 const Header = () => {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -98,15 +100,49 @@ const Header = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // WebSocket realtime notifications for logged-in users
+    // Load initial notifications from API when user logs in
     useEffect(() => {
-        if (!user?.id) return;
+        if (!user?.id) {
+            // Reset notifications when user logs out
+            setNotifications([]);
+            setUnreadCount(0);
+            return;
+        }
 
-        // Subscribe to user notifications
+        const loadInitialNotifications = async () => {
+            try {
+                // Load unread count
+                const countResponse = await getUserUnreadCount();
+                if (countResponse.success && countResponse.data) {
+                    setUnreadCount(countResponse.data.unreadCount || 0);
+                }
+
+                // Load recent notifications for dropdown
+                const notifResponse = await getUserNotifications(0, 10);
+                if (notifResponse.success && notifResponse.data?.content) {
+                    const formattedNotifs = notifResponse.data.content.map(n => ({
+                        id: n.id,
+                        type: n.type,
+                        message: n.title,
+                        description: n.content,
+                        url: n.url,
+                        time: formatNotificationTime(n.createdAt),
+                        unread: !n.isRead,
+                    }));
+                    setNotifications(formattedNotifs);
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+            }
+        };
+
+        loadInitialNotifications();
+
+        // Subscribe to realtime notifications via WebSocket
         ticketWebSocketService.subscribeToUserNotifications(user.id, (notification) => {
             console.log('🔔 User notification received:', notification);
             const newNotif = {
-                id: Date.now(),
+                id: notification.id || Date.now(),
                 type: notification.type,
                 message: notification.title,
                 description: notification.content,
@@ -118,6 +154,20 @@ const Header = () => {
             setUnreadCount(prev => prev + 1);
         });
     }, [user?.id]);
+
+    // Helper function to format notification time
+    const formatNotificationTime = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diff = now - date;
+        
+        if (diff < 60000) return 'Vừa xong';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)} phút trước`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)} giờ trước`;
+        if (diff < 604800000) return `${Math.floor(diff / 86400000)} ngày trước`;
+        return date.toLocaleDateString('vi-VN');
+    };
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -220,9 +270,14 @@ const Header = () => {
     };
 
     // Mark all notifications as read
-    const handleMarkAllRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
-        setUnreadCount(0);
+    const handleMarkAllRead = async () => {
+        try {
+            await userMarkAllAsRead();
+            setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+            setUnreadCount(0);
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
     };
 
     // Kiểm tra category đang active

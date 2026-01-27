@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, Link, useLocation } from 'react-router-dom';
 
 // Components
 import Breadcrumb from '../../components/user/Breadcrumb';
@@ -36,6 +36,8 @@ import { useAuth } from '../../context/AuthContext';
 
 const ProductDetailPage = () => {
     const { id } = useParams();
+    const location = useLocation();
+    const reviewsRef = useRef(null);
     
     // State
     const [product, setProduct] = useState(null);
@@ -43,6 +45,7 @@ const ProductDetailPage = () => {
     const [reviewStats, setReviewStats] = useState({ averageRating: 0, totalReviews: 0 });
     const [loading, setLoading] = useState(true);
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [initialTab, setInitialTab] = useState('description'); // Default tab
 
     // Context
     const { addToCart, toggleFavorite, isFavorite, showNotification } = useApp();
@@ -50,9 +53,34 @@ const ProductDetailPage = () => {
 
     // ========== Effects ==========
     
-    // Scroll to top and fetch data when product ID changes
+    // Check URL hash and set initial tab
     useEffect(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (location.hash === '#reviews') {
+            setInitialTab('reviews');
+        } else {
+            setInitialTab('description');
+        }
+    }, [location.hash]);
+
+    // Scroll to reviews section when hash is #reviews and page is loaded
+    useEffect(() => {
+        if (location.hash === '#reviews' && !loading && reviewsRef.current) {
+            // Delay scroll a bit to ensure DOM is ready
+            setTimeout(() => {
+                reviewsRef.current.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }, 300);
+        }
+    }, [location.hash, loading]);
+
+    // Scroll to top only when product ID changes (not when hash changes)
+    useEffect(() => {
+        // Only scroll to top if not navigating to reviews
+        if (location.hash !== '#reviews') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
         fetchProductData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
@@ -217,8 +245,8 @@ const ProductDetailPage = () => {
                 </div>
 
                 {/* ===== Product Details Tabs (Description / Reviews) ===== */}
-                <div className="mb-10">
-                    <ProductDetailTabs product={product} />
+                <div id="reviews" ref={reviewsRef} className="mb-10 scroll-mt-20">
+                    <ProductDetailTabs product={product} initialTab={initialTab} />
                 </div>
 
                 {/* ===== Related Products Section ===== */}
