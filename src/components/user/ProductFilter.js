@@ -150,125 +150,125 @@ const ProductFilter = ({
     /**
      * Render nội dung filter
      */
+    /**
+     * Render nội dung filter
+     */
     const renderFilterContent = () => (
-        <>
-            {/* Category Filter */}
-            {showCategoryFilter && categories.length > 0 && (
-                <div className="border-b border-gray-100 pb-4 mb-4">
-                    <SectionHeader title="Danh mục" section="category" />
+        <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+                {/* Category Filter */}
+                {showCategoryFilter && categories.length > 0 && (
+                    <div className="">
+                        <SectionHeader title="Danh mục" section="category" />
 
-                    {expandedSections.category && (
-                        <div className="space-y-2 mt-3">
-                            {/* All Categories Option */}
-                            <label className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-pink-50 transition-colors">
-                                <input
-                                    type="radio"
-                                    name="category"
-                                    checked={!currentFilters.categoryId}
-                                    onChange={() => handleChange('categoryId', '')}
-                                    className="w-4 h-4 text-pink-500 focus:ring-pink-500 border-gray-300"
-                                />
-                                <span className={`text-sm transition-colors ${!currentFilters.categoryId
-                                        ? 'text-pink-600 font-medium'
-                                        : 'text-gray-600 group-hover:text-pink-600'
-                                    }`}>
-                                    Tất cả
-                                </span>
-                            </label>
-
-                            {/* Category List */}
-                            {categories.map((category) => (
-                                <label
-                                    key={category.id}
-                                    className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-pink-50 transition-colors"
-                                >
+                        {expandedSections.category && (
+                            <div className="space-y-2 mt-3 pl-1">
+                                {/* All Categories Option */}
+                                <label className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-pink-50 transition-colors">
                                     <input
                                         type="radio"
                                         name="category"
-                                        checked={currentFilters.categoryId === category.id.toString()}
-                                        onChange={() => handleChange('categoryId', category.id.toString())}
+                                        checked={!currentFilters.categoryId}
+                                        onChange={() => handleChange('categoryId', '')}
                                         className="w-4 h-4 text-pink-500 focus:ring-pink-500 border-gray-300"
                                     />
-                                    <span className={`text-sm transition-colors ${currentFilters.categoryId === category.id.toString()
+                                    <span className={`text-sm transition-colors ${!currentFilters.categoryId
                                             ? 'text-pink-600 font-medium'
                                             : 'text-gray-600 group-hover:text-pink-600'
                                         }`}>
-                                        {category.name}
-                                    </span>
-                                    {category.productCount !== undefined && (
-                                        <span className="text-xs text-gray-400 ml-auto">
-                                            ({category.productCount})
-                                        </span>
-                                    )}
-                                </label>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Price Filter */}
-            {showPriceFilter && (
-                <div className="border-b border-gray-100 pb-4 mb-4">
-                    <SectionHeader title="Khoảng giá" section="price" />
-
-                    {expandedSections.price && (
-                        <div className="space-y-2 mt-3">
-                            {priceRanges.map((range, index) => (
-                                <label
-                                    key={index}
-                                    className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-pink-50 transition-colors"
-                                >
-                                    <input
-                                        type="radio"
-                                        name="priceRange"
-                                        checked={isPriceRangeSelected(range)}
-                                        onChange={() => handlePriceRangeChange(
-                                            range.min.toString(),
-                                            range.max?.toString() || ''
-                                        )}
-                                        className="w-4 h-4 text-pink-500 focus:ring-pink-500 border-gray-300"
-                                    />
-                                    <span className={`text-sm transition-colors ${isPriceRangeSelected(range)
-                                            ? 'text-pink-600 font-medium'
-                                            : 'text-gray-600 group-hover:text-pink-600'
-                                        }`}>
-                                        {range.label}
+                                        Tất cả
                                     </span>
                                 </label>
-                            ))}
 
-                            {/* Custom Price Range */}
-                            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                                <p className="text-xs text-gray-500 mb-2">Hoặc nhập khoảng giá:</p>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        placeholder="Từ"
-                                        value={currentFilters.minPrice}
-                                        onChange={(e) => handleChange('minPrice', e.target.value)}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                                    />
-                                    <span className="text-gray-400">-</span>
-                                    <input
-                                        type="number"
-                                        placeholder="Đến"
-                                        value={currentFilters.maxPrice}
-                                        onChange={(e) => handleChange('maxPrice', e.target.value)}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                                    />
+                                {/* Category List */}
+                                <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {categories.map((category) => (
+                                        <label
+                                            key={category.id}
+                                            className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-pink-50 transition-colors"
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="category"
+                                                checked={currentFilters.categoryId === category.id.toString()}
+                                                onChange={() => handleChange('categoryId', category.id.toString())}
+                                                className="w-4 h-4 text-pink-500 focus:ring-pink-500 border-gray-300"
+                                            />
+                                            <span className={`text-sm transition-colors ${currentFilters.categoryId === category.id.toString()
+                                                    ? 'text-pink-600 font-medium'
+                                                    : 'text-gray-600 group-hover:text-pink-600'
+                                                }`}>
+                                                {category.name}
+                                            </span>
+                                        </label>
+                                    ))}
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </div>
-            )}
+                        )}
+                    </div>
+                )}
 
-            {/* Sort Filter */}
+                {showPriceFilter && (
+                    <div className="">
+                        <SectionHeader title="Khoảng giá" section="price" />
+
+                        {expandedSections.price && (
+                            <div className="space-y-2 mt-3 pl-1">
+                                {priceRanges.map((range, index) => (
+                                    <label
+                                        key={index}
+                                        className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-pink-50 transition-colors"
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="priceRange"
+                                            checked={isPriceRangeSelected(range)}
+                                            onChange={() => handlePriceRangeChange(
+                                                range.min.toString(),
+                                                range.max?.toString() || ''
+                                            )}
+                                            className="w-4 h-4 text-pink-500 focus:ring-pink-500 border-gray-300"
+                                        />
+                                        <span className={`text-sm transition-colors ${isPriceRangeSelected(range)
+                                                ? 'text-pink-600 font-medium'
+                                                : 'text-gray-600 group-hover:text-pink-600'
+                                            }`}>
+                                            {range.label}
+                                        </span>
+                                    </label>
+                                ))}
+
+                                {/* Custom Price Range */}
+                                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                                    <p className="text-xs text-gray-500 mb-2">Hoặc nhập khoảng giá:</p>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            placeholder="Từ"
+                                            value={currentFilters.minPrice}
+                                            onChange={(e) => handleChange('minPrice', e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                                        />
+                                        <span className="text-gray-400">-</span>
+                                        <input
+                                            type="number"
+                                            placeholder="Đến"
+                                            value={currentFilters.maxPrice}
+                                            onChange={(e) => handleChange('maxPrice', e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Sort Filter - Keep at bottom or top, currently keeping at bottom */}
             {showSortFilter && (
                 <div>
                     <SectionHeader title="Sắp xếp" section="sort" />
-
                     {expandedSections.sort && (
                         <div className="mt-3">
                             <select
@@ -286,13 +286,13 @@ const ProductFilter = ({
                     )}
                 </div>
             )}
-        </>
+        </div>
     );
 
     return (
         <>
             {/* Desktop Filter */}
-            <div className="hidden lg:block bg-white rounded-2xl shadow-soft p-6 sticky top-24">
+            <div className="hidden lg:block sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar pr-2">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <h3 className="font-display text-lg font-semibold flex items-center gap-2">

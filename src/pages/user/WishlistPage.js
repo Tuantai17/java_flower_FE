@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import WishlistItem from '../../components/user/WishlistItem';
 import {
     HeartIcon,
@@ -30,8 +31,33 @@ const WishlistPage = () => {
         showNotification,
         favoritesCount 
     } = useApp();
+    const { isAuthenticated } = useAuth();
     
     const { favorites } = state;
+
+    if (!isAuthenticated) {
+        return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center py-16 px-4">
+                <div className="text-center max-w-md">
+                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <HeartIcon className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                        Vui lòng đăng nhập
+                    </h2>
+                    <p className="text-gray-500 mb-8">
+                        Vui lòng đăng nhập để xem danh sách sản phẩm yêu thích của bạn.
+                    </p>
+                    <Link
+                        to="/login"
+                        className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-full hover:from-rose-600 hover:to-pink-600 transition-all font-medium shadow-lg"
+                    >
+                        Đăng nhập ngay
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     /**
      * Xử lý xóa sản phẩm khỏi yêu thích

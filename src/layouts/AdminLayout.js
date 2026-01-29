@@ -7,7 +7,7 @@ const AdminLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-slate-50/50">
             {/* Sidebar */}
             <div className={`lg:block ${sidebarOpen ? 'block' : 'hidden'}`}>
                 <Sidebar />
@@ -22,7 +22,7 @@ const AdminLayout = () => {
             )}
 
             {/* Main Content */}
-            <div className="lg:ml-64 min-h-screen flex flex-col">
+            <div className="lg:ml-72 min-h-screen flex flex-col">
                 {/* Navbar */}
                 <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 

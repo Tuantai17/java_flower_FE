@@ -273,7 +273,7 @@ export const useCheckout = () => {
     const validateForm = useCallback(() => {
         const validation = orderService.validateCheckoutForm(formData);
         setErrors(validation.errors);
-        return validation.isValid;
+        return validation;
     }, [formData]);
 
     /**
@@ -286,13 +286,39 @@ export const useCheckout = () => {
 
         // Check authentication
         if (!isAuthenticated) {
-            setApiError('Vui lòng đăng nhập để tiến hành đặt hàng');
+            showNotification({
+                type: 'error',
+                message: 'Vui lòng đăng nhập để tiến hành đặt hàng'
+            });
             return;
         }
 
         // Validate form
-        if (!validateForm()) {
-            setApiError('Vui lòng kiểm tra lại thông tin đơn hàng');
+        const validation = validateForm();
+        if (!validation.isValid) {
+            // Mapping field names to friendly names
+            const fieldNames = {
+                senderName: 'Tên người gửi',
+                senderPhone: 'SĐT người gửi',
+                recipientName: 'Tên người nhận',
+                recipientPhone: 'SĐT người nhận',
+                province: 'Tỉnh/Thành phố',
+                district: 'Quận/Huyện',
+                addressDetail: 'Địa chỉ chi tiết',
+                deliveryDate: 'Ngày giao hàng',
+                deliveryTime: 'Giờ giao hàng'
+            };
+
+            const missingFields = Object.keys(validation.errors)
+                .map(key => fieldNames[key] || key)
+                .join(', ');
+
+            showNotification({
+                type: 'error',
+                message: 'Vui lòng điền đầy đủ: ' + missingFields,
+                duration: 5000
+            });
+            
             return;
         }
 

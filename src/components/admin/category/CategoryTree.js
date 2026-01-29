@@ -13,6 +13,7 @@ const CategoryTree = ({
     categories,
     onEdit,
     onDelete,
+    onSelect,
     selectedId = null
 }) => {
     const [expandedIds, setExpandedIds] = useState(new Set());
@@ -40,11 +41,15 @@ const CategoryTree = ({
                             : 'hover:bg-gray-100'
                         }`}
                     style={{ paddingLeft: `${level * 24 + 12}px` }}
+                    onClick={() => onSelect?.(category)}
                 >
                     {/* Expand/Collapse Button */}
                     {hasChildren ? (
                         <button
-                            onClick={() => toggleExpand(category.id)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(category.id);
+                            }}
                             className="p-1 hover:bg-gray-200 rounded transition-colors"
                         >
                             {isExpanded ? (

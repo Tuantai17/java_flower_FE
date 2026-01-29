@@ -38,8 +38,8 @@ module.exports = {
                 }
             },
             fontFamily: {
-                'display': ['Playfair Display', 'serif'],
-                'body': ['Montserrat', 'sans-serif'],
+                'display': ['"Be Vietnam Pro"', 'sans-serif'],
+                'body': ['"Inter"', 'sans-serif'],
             },
             backgroundImage: {
                 'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

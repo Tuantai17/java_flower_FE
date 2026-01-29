@@ -53,7 +53,7 @@ const ProductTable = ({
             <table className="w-full">
                 <thead>
                     <tr>
-                        <th className="w-20">Ảnh</th>
+                        <th className="w-32">Ảnh</th>
                         <th>Tên sản phẩm</th>
                         <th>Danh mục</th>
                         <th className="text-right">Giá gốc</th>
@@ -74,10 +74,10 @@ const ProductTable = ({
                                     <img
                                         src={validThumbnail}
                                         alt={product.name}
-                                        className="w-16 h-16 object-cover rounded-lg"
+                                        className="w-24 h-24 object-cover rounded-lg"
                                         onError={(e) => {
                                             e.target.onerror = null;
-                                            e.target.src = 'https://placehold.co/64x64/f3f4f6/9ca3af?text=No+Image';
+                                            e.target.src = 'https://placehold.co/96x96/f3f4f6/9ca3af?text=No+Image';
                                         }}
                                     />
                                 </td>

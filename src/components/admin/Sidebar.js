@@ -101,7 +101,7 @@ const Sidebar = () => {
             {/* Logo */}
             <div className="p-6 border-b border-white/10">
                 <Link to="/admin" className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <div className="w-10 h-10 bg-gradient-to-br from-rose-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg shadow-rose-900/20">
                         <span className="text-white text-xl">🌸</span>
                     </div>
                     <div>

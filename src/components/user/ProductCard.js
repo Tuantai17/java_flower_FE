@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HeartIcon, ShoppingBagIcon, EyeIcon } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
+import { HeartIcon as HeartSolidIcon, StarIcon } from '@heroicons/react/24/solid';
 import { formatPrice } from '../../utils/formatPrice';
 import { getImageUrl } from '../../utils/imageUrl';
 import { useApp } from '../../context/AppContext';
@@ -15,10 +15,6 @@ import LoginRequiredModal from '../common/LoginRequiredModal';
  * - Thêm vào giỏ hàng
  * - Thêm vào yêu thích
  * - Xem chi tiết
- * 
- * Hỗ trợ HATEOAS:
- * - Tự động sử dụng _links.self.href nếu có
- * - Fallback về /product/:id nếu không có HATEOAS links
  */
 const ProductCard = ({
     product,
@@ -36,6 +32,7 @@ const ProductCard = ({
         salePrice,
         thumbnail,
         stockQuantity,
+        soldCount,
         _links // HATEOAS links từ backend
     } = product;
 
@@ -49,45 +46,23 @@ const ProductCard = ({
     const isOutOfStock = stockQuantity === 0;
     const productIsFavorite = isFavorite(id);
 
-    /**
-     * Lấy URL chi tiết sản phẩm
-     * Ưu tiên sử dụng HATEOAS link nếu có
-     */
+    // Lấy URL chi tiết sản phẩm
     const getProductDetailUrl = () => {
-        // Kiểm tra xem có HATEOAS link không
         if (_links?.self?.href) {
-            // Trích xuất ID từ HATEOAS link (thường có dạng: /api/products/{id})
             const hateoasUrl = _links.self.href;
-            console.log('HATEOAS link found:', hateoasUrl);
-
-            // Extract product ID từ URL
             const matches = hateoasUrl.match(/\/products\/(\d+)/);
             if (matches && matches[1]) {
                 return `/product/${matches[1]}`;
             }
         }
-
-        // Fallback: sử dụng ID trực tiếp
         return `/product/${id}`;
     };
 
-    /**
-     * Điều hướng đến trang chi tiết sử dụng HATEOAS
-     */
     const navigateToDetail = () => {
-        const detailUrl = getProductDetailUrl();
-
-        // Log HATEOAS usage
-        if (_links?.self?.href) {
-            console.log('Navigating via HATEOAS link:', _links.self.href);
-        }
-
-        navigate(detailUrl);
+        navigate(getProductDetailUrl());
     };
 
-    /**
-     * Lấy các link action từ HATEOAS nếu có
-     */
+    // Helper to get action links
     const getHateoasAction = (actionName) => {
         if (_links && _links[actionName]?.href) {
             return _links[actionName].href;
@@ -102,16 +77,9 @@ const ProductCard = ({
 
         if (isOutOfStock) return;
 
-        // Kiểm tra đăng nhập trước khi thêm vào giỏ hàng
         if (!isAuthenticated) {
             setShowLoginModal(true);
             return;
-        }
-
-        // Log HATEOAS add-to-cart link nếu có
-        const addToCartLink = getHateoasAction('add-to-cart');
-        if (addToCartLink) {
-            console.log('HATEOAS add-to-cart link:', addToCartLink);
         }
 
         addToCart(product, 1);
@@ -126,10 +94,13 @@ const ProductCard = ({
         e.preventDefault();
         e.stopPropagation();
 
-        // Log HATEOAS favorite link nếu có
-        const favoriteLink = getHateoasAction('favorite');
-        if (favoriteLink) {
-            console.log('HATEOAS favorite link:', favoriteLink);
+        if (!isAuthenticated) {
+            showNotification({
+                type: 'warning',
+                message: 'Vui lòng đăng nhập để thêm vào danh sách yêu thích',
+                duration: 3000,
+            });
+            return;
         }
 
         toggleFavorite(product);
@@ -144,15 +115,10 @@ const ProductCard = ({
     const productDetailUrl = getProductDetailUrl();
 
     return (
-        <div className="card-product group">
+        <div className="card-product group flex flex-col h-full">
             {/* Image Container */}
             <div className="relative overflow-hidden aspect-square">
-                <Link to={productDetailUrl} onClick={(e) => {
-                    // Log để debug HATEOAS
-                    if (_links?.self?.href) {
-                        console.log('ProductCard: Using HATEOAS for navigation');
-                    }
-                }}>
+                <Link to={productDetailUrl}>
                     <img
                         src={validThumbnail}
                         alt={name}
@@ -164,17 +130,10 @@ const ProductCard = ({
                     />
                 </Link>
 
-                {/* Sale Badge */}
+                {/* Sale Tag */}
                 {discount > 0 && (
-                    <span className="badge-sale">
+                    <span className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow-md z-10">
                         -{discount}%
-                    </span>
-                )}
-
-                {/* HATEOAS Indicator (dev mode only) */}
-                {_links && process.env.NODE_ENV === 'development' && (
-                    <span className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full opacity-50">
-                        HATEOAS
                     </span>
                 )}
 
@@ -185,10 +144,9 @@ const ProductCard = ({
                     </div>
                 )}
 
-                {/* Quick Actions */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                {/* Quick Actions (Hover) */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-20">
                     <div className="flex items-center justify-center gap-2">
-                        {/* Add to Cart */}
                         <button
                             onClick={handleAddToCart}
                             disabled={isOutOfStock}
@@ -196,10 +154,7 @@ const ProductCard = ({
                             title="Thêm vào giỏ hàng"
                         >
                             <ShoppingBagIcon className="h-5 w-5" />
-                            <span className="hidden sm:inline">Thêm giỏ</span>
                         </button>
-
-                        {/* Favorite */}
                         <button
                             onClick={handleToggleFavorite}
                             className={`p-3 rounded-full shadow-lg transition-all duration-300 ${productIsFavorite
@@ -208,14 +163,8 @@ const ProductCard = ({
                                 }`}
                             title={productIsFavorite ? 'Bỏ yêu thích' : 'Thêm yêu thích'}
                         >
-                            {productIsFavorite ? (
-                                <HeartSolidIcon className="h-5 w-5" />
-                            ) : (
-                                <HeartIcon className="h-5 w-5" />
-                            )}
+                            {productIsFavorite ? <HeartSolidIcon className="h-5 w-5" /> : <HeartIcon className="h-5 w-5" />}
                         </button>
-
-                        {/* Quick View */}
                         {showQuickView && (
                             <button
                                 onClick={navigateToDetail}
@@ -229,36 +178,51 @@ const ProductCard = ({
                 </div>
             </div>
 
-            {/* Product Info */}
-            <div className="p-4">
+            {/* Product Info - Flex column to push rating to bottom */}
+            <div className="p-4 flex flex-col flex-1">
+                {/* Name */}
                 <Link
                     to={productDetailUrl}
-                    className="block text-gray-800 font-medium hover:text-pink-600 transition-colors line-clamp-2 min-h-[48px]"
+                    className="block text-gray-800 font-medium hover:text-pink-600 transition-colors line-clamp-2 min-h-[40px] mb-2"
+                    title={name}
                 >
                     {name}
                 </Link>
 
-                {/* Price */}
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                {/* Price Section */}
+                <div className="mb-2">
                     {salePrice && salePrice < price ? (
-                        <>
-                            <span className="price-original">{formatPrice(price)}</span>
-                            <span className="price-sale">{formatPrice(salePrice)}</span>
-                        </>
+                        <div className="flex flex-col">
+                           <span className="text-red-600 font-bold text-lg">
+                                {formatPrice(salePrice)}
+                            </span>
+                            <span className="text-gray-400 text-sm line-through decoration-gray-400">
+                                {formatPrice(price)}
+                            </span>
+                        </div>
                     ) : (
-                        <span className="text-rose-600 font-bold text-lg">{formatPrice(price)}</span>
+                        <span className="text-red-600 font-bold text-lg">
+                            {formatPrice(price)}
+                        </span>
                     )}
                 </div>
 
-                {/* Stock Status */}
-                {stockQuantity !== undefined && stockQuantity > 0 && stockQuantity < 5 && (
-                    <p className="mt-2 text-xs text-orange-500">
-                        Chỉ còn {stockQuantity} sản phẩm
-                    </p>
-                )}
+                {/* Spacer to push bottom content down */}
+                <div className="mt-auto pt-2 border-t border-gray-50 flex items-center justify-between">
+                     {/* Rating */}
+                    <div className="flex text-yellow-400">
+                        {[...Array(5)].map((_, i) => (
+                            <StarIcon key={i} className="h-3.5 w-3.5" />
+                        ))}
+                    </div>
+
+                    {/* Sold Count */}
+                    <span className="text-gray-500 text-xs">
+                        Đã bán {soldCount || 0}
+                    </span>
+                </div>
             </div>
 
-            {/* Login Required Modal */}
             <LoginRequiredModal 
                 isOpen={showLoginModal}
                 onClose={() => setShowLoginModal(false)}

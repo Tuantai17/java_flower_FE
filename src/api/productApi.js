@@ -21,6 +21,12 @@ const productApi = {
         return unwrapResponse(response);
     },
 
+    // Get all products for admin (includes hidden/inactive)
+    getAdminAll: async () => {
+        const response = await axiosInstance.get('/admin/products');
+        return unwrapResponse(response);
+    },
+
     // Get paginated products - simulates pagination from full list since backend doesn't have /page endpoint
     getPaginated: async (page = 0, size = 12, sortBy = 'createdAt', sortDir = 'desc') => {
         try {

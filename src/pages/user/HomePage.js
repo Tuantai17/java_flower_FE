@@ -74,9 +74,6 @@ const HomePage = () => {
                 <section className="py-16 bg-gradient-to-b from-pink-50 to-white">
                     <div className="container-custom">
                         <div className="text-center mb-12">
-                            <span className="inline-block px-4 py-2 bg-green-100 text-green-600 rounded-full text-sm font-medium mb-4">
-                                🆕 Mới Ra Mắt
-                            </span>
                             <h2 className="section-title">Sản Phẩm Mới</h2>
                             <p className="section-subtitle mt-4">Những thiết kế mới nhất dành cho bạn</p>
                         </div>

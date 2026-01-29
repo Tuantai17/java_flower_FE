@@ -94,7 +94,7 @@ const TopProductsCard = ({ products, loading = false }) => {
                             <img
                                 src={product.thumbnail || '/placeholder-product.png'}
                                 alt={product.name}
-                                className="w-full h-28 rounded-lg object-cover mb-3"
+                                className="w-full h-72 rounded-lg object-cover mb-3"
                                 onError={(e) => {
                                     e.target.src = '/placeholder-product.png';
                                 }}

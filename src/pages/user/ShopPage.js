@@ -30,7 +30,7 @@ const ShopPage = () => {
     // Pagination state
     const [pagination, setPagination] = useState({
         page: 0,
-        size: 12,
+        size: 6,
         totalPages: 0,
         totalElements: 0,
     });
@@ -156,8 +156,23 @@ const ShopPage = () => {
     /**
      * Xử lý chuyển trang
      */
+    /**
+     * Xử lý chuyển trang
+     */
     const handlePageChange = (page) => {
         setPagination(prev => ({ ...prev, page: page - 1 }));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    /**
+     * Xử lý thay đổi số lượng hiển thị mỗi trang
+     */
+    const handlePageSizeChange = (newSize) => {
+        setPagination(prev => ({ 
+            ...prev, 
+            size: Number(newSize),
+            page: 0 // Reset về trang đầu
+        }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -266,7 +281,7 @@ const ShopPage = () => {
 
                 <div className="flex flex-col lg:flex-row gap-8">
                     {/* Sidebar Filter */}
-                    <div className="lg:w-72 flex-shrink-0">
+                    <div className="lg:w-80 flex-shrink-0">
                         <ProductFilter
                             filters={filters}
                             onFilterChange={handleFilterChange}
@@ -279,7 +294,7 @@ const ShopPage = () => {
                     {/* Products */}
                     <div className="flex-1">
                         {/* Toolbar */}
-                        <div className="flex items-center justify-between mb-6 bg-white rounded-xl shadow-soft p-4">
+                        <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 {/* Mobile Filter Toggle */}
                                 <button
@@ -290,13 +305,7 @@ const ShopPage = () => {
                                     <span className="text-sm font-medium">Lọc</span>
                                 </button>
 
-                                <p className="text-gray-600">
-                                    Hiển thị{' '}
-                                    <span className="font-medium text-gray-900">
-                                        {products.length}
-                                    </span>{' '}
-                                    / {pagination.totalElements} sản phẩm
-                                </p>
+
                             </div>
 
                             <div className="flex items-center gap-4">
@@ -339,6 +348,10 @@ const ShopPage = () => {
                             </div>
                         </div>
 
+                        {/* Top Pagination */}
+                        {/* Top Pagination */}
+
+
                         {/* Products Grid */}
                         <ProductGrid
                             products={products}
@@ -355,17 +368,17 @@ const ShopPage = () => {
                         />
 
                         {/* Pagination */}
-                        {pagination.totalPages > 1 && (
-                            <div className="mt-8">
-                                <Pagination
-                                    currentPage={pagination.page + 1}
-                                    totalPages={pagination.totalPages}
-                                    totalItems={pagination.totalElements}
-                                    pageSize={pagination.size}
-                                    onPageChange={handlePageChange}
-                                />
-                            </div>
-                        )}
+                        {/* Pagination */}
+                        <div className="mt-8">
+                            <Pagination
+                                currentPage={pagination.page + 1}
+                                totalPages={pagination.totalPages}
+                                totalItems={pagination.totalElements}
+                                pageSize={pagination.size}
+                                onPageChange={handlePageChange}
+                                onPageSizeChange={handlePageSizeChange}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

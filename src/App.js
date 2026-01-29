@@ -64,6 +64,7 @@ import ProductShow from './pages/admin/product/ProductShow';
 import CategoryList from './pages/admin/category/CategoryList';
 import CategoryCreate from './pages/admin/category/CategoryCreate';
 import CategoryEdit from './pages/admin/category/CategoryEdit';
+import CategoryProducts from './pages/admin/category/CategoryProducts';
 import VoucherList from './pages/admin/voucher/VoucherList';
 import VoucherCreate from './pages/admin/voucher/VoucherCreate';
 import VoucherEdit from './pages/admin/voucher/VoucherEdit';
@@ -85,6 +86,7 @@ import { ArticleList, ArticleForm, ArticleAIGenerate, ArticleImport, ArticleDeta
 
 // Global Components
 import GlobalNotification from './components/common/GlobalNotification';
+import ScrollToTop from './components/common/ScrollToTop';
 
 // Google Client ID từ biến môi trường
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -98,6 +100,7 @@ function App() {
             <Router>
               {/* Global Notification */}
               <GlobalNotification />
+              <ScrollToTop />
 
               <Routes>
 
@@ -192,6 +195,7 @@ function App() {
                   <Route path="categories" element={<CategoryList />} />
                   <Route path="categories/create" element={<CategoryCreate />} />
                   <Route path="categories/edit/:id" element={<CategoryEdit />} />
+                  <Route path="categories/:id/products" element={<CategoryProducts />} />
 
                   {/* VOUCHER */}
                   <Route path="vouchers" element={<VoucherList />} />

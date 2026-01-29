@@ -6,12 +6,15 @@ const Pagination = ({
     totalPages,
     totalItems,
     pageSize,
+
     onPageChange,
+    onPageSizeChange,
     showInfo = true,
     showFirstLast = true,
     maxVisiblePages = 5,
+    className = 'mt-8',
 }) => {
-    if (totalPages <= 1) return null;
+    if (!totalItems) return null;
 
     const getPageNumbers = () => {
         const pages = [];
@@ -34,17 +37,9 @@ const Pagination = ({
     const endItem = Math.min(currentPage * pageSize, totalItems);
 
     return (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
+        <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 ${className}`}>
             {/* Info */}
-            {showInfo && (
-                <p className="text-sm text-gray-500">
-                    Hiển thị <span className="font-medium text-gray-700">{startItem}</span>
-                    {' - '}
-                    <span className="font-medium text-gray-700">{endItem}</span>
-                    {' trên '}
-                    <span className="font-medium text-gray-700">{totalItems}</span> kết quả
-                </p>
-            )}
+
 
             {/* Pagination Controls */}
             <nav className="flex items-center gap-1">

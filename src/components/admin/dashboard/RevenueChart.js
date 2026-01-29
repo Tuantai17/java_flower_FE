@@ -48,8 +48,8 @@ export const TIME_PERIODS = [
 
 /** Màu sắc */
 const CHART_COLORS = {
-    primary: '#ec4899',      // Pink
-    secondary: '#3b82f6',    // Blue
+    primary: '#be123c',      // Rose-700
+    secondary: '#d97706',    // Amber-600
 };
 
 // ============================================

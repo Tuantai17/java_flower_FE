@@ -4,23 +4,78 @@ import CategoryTable from '../../../components/admin/category/CategoryTable';
 import CategoryTree from '../../../components/admin/category/CategoryTree';
 import { ConfirmModal } from '../../../components/common/Modal';
 import categoryApi from '../../../api/categoryApi';
+import productApi from '../../../api/productApi';
+import { getImageUrl } from '../../../utils/imageUrl';
+import { formatPrice } from '../../../utils/formatPrice';
 import {
     PlusIcon,
     TableCellsIcon,
     ListBulletIcon,
+    XMarkIcon,
+    ArrowRightIcon
 } from '@heroicons/react/24/outline';
 
 const CategoryList = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [viewMode, setViewMode] = useState('table'); // 'table' or 'tree'
+    const [viewMode, setViewMode] = useState('tree'); // 'table' or 'tree'
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, categoryId: null });
+    
+    // Preview state
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [previewProducts, setPreviewProducts] = useState([]);
+    const [previewLoading, setPreviewLoading] = useState(false);
 
     useEffect(() => {
         fetchCategories();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [viewMode]);
+
+    // Helper to get all IDs from a category and its children
+    const getCategoryTreeIds = (category) => {
+        let ids = [category.id];
+        if (category.children && category.children.length > 0) {
+            category.children.forEach(child => {
+                ids = [...ids, ...getCategoryTreeIds(child)];
+            });
+        }
+        return ids;
+    };
+
+    const handleSelectCategory = async (category) => {
+        if (selectedCategory?.id === category.id) {
+            // Deselect if clicking same category
+            setSelectedCategory(null);
+            setPreviewProducts([]);
+            return;
+        }
+
+        setSelectedCategory(category);
+        setPreviewLoading(true);
+        try {
+            // Fetch all admin products 
+            const allProducts = await productApi.getAdminAll();
+            
+            // Get all Category IDs (including children)
+            const targetIds = getCategoryTreeIds(category);
+            const targetIdsSet = new Set(targetIds.map(id => Number(id)));
+
+            // Normalize and filter
+            const productsArray = Array.isArray(allProducts) ? allProducts : [];
+            const categoryProducts = productsArray.filter(p => {
+                const pCatId = p.categoryId ? Number(p.categoryId) : (p.category?.id ? Number(p.category.id) : null);
+                return pCatId && targetIdsSet.has(pCatId);
+            });
+
+            setPreviewProducts(categoryProducts);
+        } catch (error) {
+            console.error('Error fetching preview products:', error);
+            setPreviewProducts([]);
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
 
     const fetchCategories = async () => {
         setLoading(true);
@@ -147,10 +202,96 @@ const CategoryList = () => {
                     onToggleStatus={handleToggleStatus}
                 />
             ) : !error && (
-                <CategoryTree
-                    categories={categories}
-                    onDelete={(id) => setDeleteModal({ isOpen: true, categoryId: id })}
-                />
+                <div className="flex flex-col lg:flex-row gap-6 items-start">
+                    <div className="flex-1 w-full">
+                        <CategoryTree
+                            categories={categories}
+                            onDelete={(id) => setDeleteModal({ isOpen: true, categoryId: id })}
+                            onSelect={handleSelectCategory}
+                            selectedId={selectedCategory?.id}
+                        />
+                    </div>
+
+                    {/* Preview Panel */}
+                    {selectedCategory && (
+                        <div className="w-full lg:w-96 bg-white rounded-xl shadow-soft p-4 border border-gray-100 flex-shrink-0 sticky top-24 transition-all animate-fadeIn">
+                            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                                <h3 className="font-bold text-gray-800 line-clamp-1" title={selectedCategory.name}>
+                                    {selectedCategory.name} <span className="text-gray-500 font-normal text-sm">({previewProducts.length})</span>
+                                </h3>
+                                <button 
+                                    onClick={() => setSelectedCategory(null)}
+                                    className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                                >
+                                    <XMarkIcon className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {previewLoading ? (
+                                    // Loading Skeletons
+                                    [...Array(3)].map((_, i) => (
+                                        <div key={i} className="flex gap-3 animate-pulse">
+                                            <div className="w-16 h-16 bg-gray-200 rounded-lg"></div>
+                                            <div className="flex-1 space-y-2 py-1">
+                                                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : previewProducts.length > 0 ? (
+                                    <>
+                                        {/* Product List */}
+                                        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                            {previewProducts.map((product) => (
+                                                <div key={product.id} className="flex gap-3 group bg-gray-50 p-2 rounded-lg hover:bg-pink-50 transition-colors cursor-pointer">
+                                                    <img 
+                                                        src={getImageUrl(product.thumbnail)} 
+                                                        alt={product.name}
+                                                        className="w-12 h-12 object-cover rounded-lg border border-gray-100 flex-shrink-0"
+                                                        onError={(e) => e.target.src = 'https://placehold.co/64?text=Flower'}
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="text-sm font-medium text-gray-800 line-clamp-1 group-hover:text-pink-600 transition-colors">
+                                                            {product.name}
+                                                        </h4>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <p className="text-xs font-bold text-rose-600">
+                                                                {formatPrice(product.salePrice || product.price)}
+                                                            </p>
+                                                            {!product.active && (
+                                                                <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">Hidden</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        
+                                        {/* View All Button */}
+                                        <Link 
+                                            to={`/admin/categories/${selectedCategory.id}/products`}
+                                            className="block w-full py-2.5 mt-2 text-center text-sm font-medium text-pink-600 bg-white border border-pink-200 hover:bg-pink-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            Quản lý chi tiết
+                                            <ArrowRightIcon className="h-4 w-4" />
+                                        </Link>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-8 text-gray-500">
+                                        <p>Chưa có sản phẩm nào</p>
+                                        <Link 
+                                            to="/admin/products/create"
+                                            className="text-pink-600 text-sm hover:underline mt-2 inline-block"
+                                        >
+                                            + Thêm sản phẩm
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* Delete Confirmation Modal */}

@@ -58,18 +58,7 @@ const FeaturedProducts = ({
                     </div>
                 )}
 
-                {/* View More */}
-                {showViewMore && (
-                    <div className="text-center mt-12">
-                        <Link
-                            to="/shop"
-                            className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-500 text-white font-medium rounded-full hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300"
-                        >
-                            <span>≡</span>
-                            Xem thêm bó hoa
-                        </Link>
-                    </div>
-                )}
+
             </div>
         </section>
     );
