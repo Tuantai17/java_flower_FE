@@ -179,9 +179,11 @@ export const getStatusColor = (status) => {
 
 /**
  * Kiểm tra đơn hàng có thể hủy không
+ * Chỉ cho phép hủy khi đơn hàng đang ở trạng thái PENDING (chờ xác nhận)
+ * Sau khi đã xác nhận (CONFIRMED), không thể hủy nữa
  */
 export const canCancelOrder = (status) => {
-  return [ORDER_STATUS.PENDING, ORDER_STATUS.CONFIRMED].includes(status);
+  return status === ORDER_STATUS.PENDING;
 };
 
 // ====================

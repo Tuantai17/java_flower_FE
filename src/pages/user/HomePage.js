@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import HeroSection from '../../components/user/HeroSection';
 import FeaturedProducts from '../../components/user/FeaturedProducts';
 import CategoryCard from '../../components/user/CategoryCard';
@@ -88,6 +89,17 @@ const HomePage = () => {
                                     isFavorite={isFavorite(product.id)}
                                 />
                             ))}
+                        </div>
+
+                        {/* View All Button */}
+                        <div className="text-center mt-8">
+                            <Link
+                                to="/shop"
+                                className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold rounded-full hover:from-rose-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                            >
+                                Xem tất cả sản phẩm
+                                <ArrowRightIcon className="h-5 w-5" />
+                            </Link>
                         </div>
                     </div>
                 </section>

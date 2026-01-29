@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Breadcrumb from '../../components/user/Breadcrumb';
+import shippingApi from '../../api/shippingApi';
 import {
     TruckIcon,
     ClockIcon,
@@ -14,6 +15,10 @@ import {
 } from '@heroicons/react/24/outline';
 
 const ShippingPolicyPage = () => {
+    // State for dynamic shipping data
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [hcmDistricts, setHcmDistricts] = useState({ inner: [], outer: [] });
     const deliveryZones = [
         {
             zone: 'Nội thành TP.HCM',
@@ -109,34 +114,77 @@ const ShippingPolicyPage = () => {
         },
     ];
 
-    // Chi tiết quận huyện TP.HCM
-    const hcmDistricts = {
-        inner: [
-            { name: 'Quận 1', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận 3', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận 5', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận 10', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận 11', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận Phú Nhuận', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận Bình Thạnh', time: '2-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận Tân Bình', time: '2-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận Gò Vấp', time: '2-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận 4', time: '2-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận 7', time: '2-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-            { name: 'Quận 8', time: '3-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
-        ],
-        outer: [
-            { name: 'Quận 12', time: '4-5 giờ', fee: '35.000đ', freeFrom: '700.000đ' },
-            { name: 'TP. Thủ Đức', time: '4-5 giờ', fee: '35.000đ', freeFrom: '700.000đ' },
-            { name: 'Quận Bình Tân', time: '4-5 giờ', fee: '35.000đ', freeFrom: '700.000đ' },
-            { name: 'Quận Tân Phú', time: '3-4 giờ', fee: '30.000đ', freeFrom: '700.000đ' },
-            { name: 'Huyện Hóc Môn', time: '5-6 giờ', fee: '40.000đ', freeFrom: '700.000đ' },
-            { name: 'Huyện Củ Chi', time: '5-6 giờ', fee: '45.000đ', freeFrom: '700.000đ' },
-            { name: 'Huyện Bình Chánh', time: '5-6 giờ', fee: '40.000đ', freeFrom: '700.000đ' },
-            { name: 'Huyện Nhà Bè', time: '5-6 giờ', fee: '40.000đ', freeFrom: '700.000đ' },
-            { name: 'Huyện Cần Giờ', time: '1 ngày', fee: '60.000đ', freeFrom: '700.000đ' },
-        ],
-    };
+    // Fetch shipping districts from API
+    useEffect(() => {
+        const fetchDistricts = async () => {
+            try {
+                setLoading(true);
+                const response = await shippingApi.getDistricts('TPHCM');
+                const districts = response.data || [];
+                
+                // Format and group by zone
+                const formatPrice = (price) => {
+                    return new Intl.NumberFormat('vi-VN').format(price || 0) + 'đ';
+                };
+                
+                const inner = districts
+                    .filter(d => d.zone === 'INNER')
+                    .map(d => ({
+                        name: d.district,
+                        time: d.estimatedTime,
+                        fee: formatPrice(d.baseFee),
+                        freeFrom: formatPrice(d.freeShipThreshold)
+                    }));
+                    
+                const outer = districts
+                    .filter(d => d.zone === 'OUTER')
+                    .map(d => ({
+                        name: d.district,
+                        time: d.estimatedTime,
+                        fee: formatPrice(d.baseFee),
+                        freeFrom: formatPrice(d.freeShipThreshold)
+                    }));
+                
+                setHcmDistricts({ inner, outer });
+                setError(null);
+            } catch (err) {
+                console.error('Error fetching shipping districts:', err);
+                setError('Không thể tải thông tin phí vận chuyển');
+                // Fallback to default data
+                setHcmDistricts({
+                    inner: [
+                        { name: 'Quận 1', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận 3', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận 5', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận 10', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận 11', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận Phú Nhuận', time: '2-3 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận Bình Thạnh', time: '2-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận Tân Bình', time: '2-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận Gò Vấp', time: '2-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận 4', time: '2-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận 7', time: '2-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                        { name: 'Quận 8', time: '3-4 giờ', fee: '25.000đ', freeFrom: '500.000đ' },
+                    ],
+                    outer: [
+                        { name: 'Quận 12', time: '4-5 giờ', fee: '35.000đ', freeFrom: '700.000đ' },
+                        { name: 'TP. Thủ Đức', time: '4-5 giờ', fee: '35.000đ', freeFrom: '700.000đ' },
+                        { name: 'Quận Bình Tân', time: '4-5 giờ', fee: '35.000đ', freeFrom: '700.000đ' },
+                        { name: 'Quận Tân Phú', time: '3-4 giờ', fee: '30.000đ', freeFrom: '700.000đ' },
+                        { name: 'Huyện Hóc Môn', time: '5-6 giờ', fee: '40.000đ', freeFrom: '700.000đ' },
+                        { name: 'Huyện Củ Chi', time: '5-6 giờ', fee: '45.000đ', freeFrom: '700.000đ' },
+                        { name: 'Huyện Bình Chánh', time: '5-6 giờ', fee: '40.000đ', freeFrom: '700.000đ' },
+                        { name: 'Huyện Nhà Bè', time: '5-6 giờ', fee: '40.000đ', freeFrom: '700.000đ' },
+                        { name: 'Huyện Cần Giờ', time: '1 ngày', fee: '60.000đ', freeFrom: '700.000đ' },
+                    ],
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        fetchDistricts();
+    }, []);
 
     return (
         <div className="bg-gray-50 min-h-screen">
