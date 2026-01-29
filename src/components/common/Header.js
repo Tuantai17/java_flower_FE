@@ -619,6 +619,26 @@ const Header = () => {
                                                 <span>Cài đặt</span>
                                             </Link>
 
+                                            {/* Admin Dashboard - Hiển thị cho ADMIN hoặc STAFF */}
+                                            {(user.role === 'ADMIN' || user.role === 'STAFF') && (
+                                                <>
+                                                    <div className="border-t border-gray-100 my-2"></div>
+                                                    <Link
+                                                        to="/admin"
+                                                        onClick={() => setShowAccountDropdown(false)}
+                                                        className="flex items-center gap-3 px-4 py-2.5 text-indigo-600 hover:bg-indigo-50 transition-colors font-medium"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z" clipRule="evenodd" />
+                                                        </svg>
+                                                        <span>Trang Quản Trị</span>
+                                                        <span className="ml-auto bg-indigo-100 text-indigo-600 text-xs px-2 py-0.5 rounded-full">
+                                                            {user.role === 'ADMIN' ? 'Admin' : 'Staff'}
+                                                        </span>
+                                                    </Link>
+                                                </>
+                                            )}
+
                                             {/* Divider */}
                                             <div className="border-t border-gray-100 my-2"></div>
 
@@ -960,6 +980,28 @@ const Header = () => {
                                 )}
                             </Link>
                         </li>
+
+                        {/* Trang Quản Trị - Chỉ hiển thị cho ADMIN hoặc STAFF */}
+                        {user && (user.role === 'ADMIN' || user.role === 'STAFF') && (
+                            <li className="border-b border-gray-50">
+                                <Link
+                                    to="/admin"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={`
+                                        flex items-center justify-between px-6 py-3.5 font-semibold text-sm uppercase
+                                        bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-600
+                                    `}
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <Cog6ToothIcon className="h-5 w-5" />
+                                        Trang Quản Trị
+                                    </span>
+                                    <span className="px-2 py-0.5 bg-indigo-500 text-white text-xs rounded-full">
+                                        {user.role === 'ADMIN' ? 'Admin' : 'Staff'}
+                                    </span>
+                                </Link>
+                            </li>
+                        )}
 
                         {/* Dynamic Categories */}
                         {categories.map((category) => (

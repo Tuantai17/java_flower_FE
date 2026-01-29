@@ -53,6 +53,7 @@ import LoginPage from "./pages/user/LoginPage";
 import RegisterPage from "./pages/user/RegisterPage";
 import ForgotPasswordPage from "./pages/user/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/user/ResetPasswordPage";
+import VerifyEmailPage from "./pages/user/VerifyEmailPage";
 
 // ADMIN Pages
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
@@ -163,6 +164,7 @@ function App() {
                   <Route path="register" element={<RegisterPage />} />
                   <Route path="forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="reset-password" element={<ResetPasswordPage />} />
+                  <Route path="verify-email" element={<VerifyEmailPage />} />
                 </Route>
 
 

@@ -252,6 +252,22 @@ const authService = {
     return res.data?.data || res.data;
   },
 
+  /**
+   * Đồng bộ Admin session sang User session
+   * Copy adminToken sang userToken để admin có thể xem website với cùng tài khoản
+   */
+  syncAdminToUserSession: () => {
+    const adminToken = authService.getAdminToken();
+    if (adminToken) {
+      localStorage.setItem(TOKEN_KEYS.USER, adminToken);
+      localStorage.setItem('token', adminToken);
+      console.log('🔄 Synced admin token to user session');
+      return true;
+    }
+    console.warn('⚠️ No admin token to sync');
+    return false;
+  },
+
   // Export TOKEN_KEYS để các module khác dùng
   TOKEN_KEYS,
 };

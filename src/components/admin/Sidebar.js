@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import authService from '../../api/authService';
 import {
     HomeIcon,
     CubeIcon,
@@ -142,13 +143,27 @@ const Sidebar = () => {
                     </p>
                     <ul className="space-y-2">
                         <li>
-                            <Link
-                                to="/"
-                                target="_blank"
-                                className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
+                            <button
+                                onClick={() => {
+                                    // Đồng bộ session admin sang user trước khi mở website
+                                    authService.syncAdminToUserSession();
+                                    // Mở website trong tab mới
+                                    window.open('/', '_blank', 'noopener,noreferrer');
+                                }}
+                                className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors group w-full text-left"
                             >
-                                <span>🌐</span>
+                                <span className="group-hover:scale-110 transition-transform">🌐</span>
                                 <span>Xem website</span>
+                                <span className="ml-auto text-xs text-gray-500 group-hover:text-gray-300">↗</span>
+                            </button>
+                        </li>
+                        <li>
+                            <Link
+                                to="/admin/profile"
+                                className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors group"
+                            >
+                                <span className="group-hover:scale-110 transition-transform">👤</span>
+                                <span>Tài khoản của tôi</span>
                             </Link>
                         </li>
                     </ul>

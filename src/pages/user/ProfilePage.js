@@ -13,6 +13,7 @@ import {
     CalendarIcon,
     CameraIcon,
     ArrowRightOnRectangleIcon,
+    Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 
 const ProfilePage = () => {
@@ -273,7 +274,18 @@ const ProfilePage = () => {
                         </div>
 
                         {/* Header Actions */}
-                        <div className="flex justify-end pt-4 gap-3">
+                        <div className="flex justify-end pt-4 gap-3 flex-wrap">
+                            {/* Nút Quản trị - Chỉ hiển thị cho ADMIN hoặc STAFF */}
+                            {(profile?.role === 'ADMIN' || profile?.role === 'STAFF') && (
+                                <Link
+                                    to="/admin"
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+                                >
+                                    <Cog6ToothIcon className="h-5 w-5" />
+                                    Quản trị
+                                </Link>
+                            )}
+                            
                             {!isEditing ? (
                                 <button
                                     onClick={() => setIsEditing(true)}
@@ -494,6 +506,30 @@ const ProfilePage = () => {
                             <span className="text-sm font-medium text-gray-700">Đổi mật khẩu</span>
                         </Link>
                     </div>
+
+                    {/* Admin Dashboard Link - Chỉ hiển thị cho ADMIN hoặc STAFF */}
+                    {(profile?.role === 'ADMIN' || profile?.role === 'STAFF') && (
+                        <div className="mt-6 pt-6 border-t border-gray-100">
+                            <h4 className="text-sm font-medium text-gray-500 mb-3">Dành cho Quản trị viên</h4>
+                            <Link
+                                to="/admin"
+                                className="flex items-center gap-4 p-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl group"
+                            >
+                                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Cog6ToothIcon className="h-7 w-7 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-white font-semibold text-lg">Trang Quản Trị</p>
+                                    <p className="text-white/80 text-sm">Quản lý đơn hàng, sản phẩm, người dùng...</p>
+                                </div>
+                                <div className="text-white/60 group-hover:text-white group-hover:translate-x-1 transition-all">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </div>
+                            </Link>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
