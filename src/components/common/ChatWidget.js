@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { 
     createOrGetSession, 
     sendMessage, 
@@ -7,6 +8,63 @@ import {
     saveSessionId,
     getSavedSessionId
 } from '../../api/chatApi';
+
+/**
+ * ProductSuggestionCard Component
+ * Renders inline product card in chat messages - compact horizontal carousel style
+ */
+const ProductSuggestionCard = ({ product }) => {
+    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+    
+    const getImageUrl = (thumbnail) => {
+        if (!thumbnail) return '/placeholder-flower.jpg';
+        if (thumbnail.startsWith('http')) return thumbnail;
+        return `${API_BASE_URL}${thumbnail}`;
+    };
+
+    return (
+        <Link 
+            to={`/product/${product.slug}`}
+            className="block bg-white rounded-lg border border-gray-100 overflow-hidden 
+                hover:shadow-md hover:border-pink-200 transition-all duration-200 group"
+        >
+            {/* Product Image - square ratio */}
+            <div className="w-full aspect-square overflow-hidden bg-gradient-to-br from-pink-50 to-rose-50">
+                <img 
+                    src={getImageUrl(product.thumbnail)}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    onError={(e) => {
+                        e.target.src = '/placeholder-flower.jpg';
+                    }}
+                />
+            </div>
+            
+            {/* Product Info - compact */}
+            <div className="p-2 bg-white">
+                <h4 className="text-[11px] font-medium text-gray-700 line-clamp-2 leading-tight min-h-[28px]">
+                    {product.name}
+                </h4>
+                <div className="mt-1">
+                    {product.salePrice ? (
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold text-rose-500">
+                                {product.salePrice}
+                            </span>
+                            <span className="text-[10px] text-gray-400 line-through">
+                                {product.price}
+                            </span>
+                        </div>
+                    ) : (
+                        <span className="text-xs font-bold text-rose-500">
+                            {product.price}
+                        </span>
+                    )}
+                </div>
+            </div>
+        </Link>
+    );
+};
 
 /**
  * ChatWidget Component
@@ -296,6 +354,38 @@ const ChatWidget = () => {
                                             >
                                                 <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
                                             </div>
+                                            
+                                            {/* Product Suggestion Cards - horizontal scrollable carousel */}
+                                            {!isUser && message.metadata && message.messageType === 'PRODUCT' && (() => {
+                                                try {
+                                                    const products = JSON.parse(message.metadata);
+                                                    if (Array.isArray(products) && products.length > 0) {
+                                                        return (
+                                                            <div 
+                                                                className="flex gap-2 mt-2 overflow-x-auto pb-2 scrollbar-hide"
+                                                                style={{ 
+                                                                    scrollbarWidth: 'none', 
+                                                                    msOverflowStyle: 'none',
+                                                                    WebkitOverflowScrolling: 'touch'
+                                                                }}
+                                                            >
+                                                                {products.slice(0, 6).map((product) => (
+                                                                    <div 
+                                                                        key={product.id} 
+                                                                        className="flex-shrink-0"
+                                                                        style={{ width: '120px' }}
+                                                                    >
+                                                                        <ProductSuggestionCard product={product} />
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    }
+                                                } catch (e) {
+                                                    console.error('Failed to parse product metadata:', e);
+                                                }
+                                                return null;
+                                            })()}
                                             
                                             {/* Time */}
                                             <div className={`text-xs text-gray-400 mt-1 ${isUser ? 'text-right mr-1' : 'ml-1'}`}>
